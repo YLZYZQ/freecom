@@ -1,0 +1,9 @@
+<Window x:Class="FreeCom.App.ProtocolHelpWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="协议格式说明与下位机例程" Height="680" Width="780"
+        WindowStartupLocation="CenterOwner" Background="#FF20252B">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="14">
+        <StackPanel x:Name="ContentPanel"/>
+    </ScrollViewer>
+</Window>

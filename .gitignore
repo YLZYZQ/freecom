@@ -1,0 +1,18 @@
+# 构建产物
+bin/
+obj/
+publish/
+artifacts/
+
+# 诊断/临时文件
+*.gcdump
+*.log
+tools/com0com/*.txt
+tools/com0com/com0com-signed.zip
+tools/com0com/extracted/
+
+# IDE / 用户文件
+.vs/
+.idea/
+*.user
+*.suo

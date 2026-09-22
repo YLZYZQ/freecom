@@ -1,0 +1,17 @@
+<Window x:Class="FreeCom.App.VcomManagerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="虚拟串口管理器（com0com）" Height="440" Width="520"
+        WindowStartupLocation="CenterOwner" Background="#FF20252B">
+    <DockPanel Margin="10">
+        <TextBlock DockPanel.Dock="Top" x:Name="TbDriver" Text="驱动状态：检测中..." Foreground="#FFE8E8E8" Margin="0,0,0,6"/>
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
+            <Button Content="创建一对" Width="80" Click="Create_OnClick"/>
+            <Button Content="删除所选" Width="80" Margin="8,0,0,0" Click="Remove_OnClick"/>
+            <Button Content="刷新" Width="60" Margin="8,0,0,0" Click="Reload_OnClick"/>
+            <Button Content="驱动下载与安装说明" Margin="8,0,0,0" Click="Help_OnClick"/>
+        </StackPanel>
+        <ListBox x:Name="LbPairs" Background="#FF14171C" Foreground="#FFD6E2EE"
+                 FontFamily="Consolas" SelectionMode="Single"/>
+    </DockPanel>
+</Window>
