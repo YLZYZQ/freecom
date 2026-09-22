@@ -19,6 +19,46 @@ public class PlotServiceTests
     }
 
     [Fact]
+    public void LastPoint_TracksRingHead()
+    {
+        var plots = new PlotService();
+        var win = plots.GetOrCreate("w");
+        win.Add([1], null);
+        win.Add([2], null);
+        Assert.Equal((1, 2), win.Curves[0].LastPoint());
+        // 环形淘汰后仍取最新（X 为自动索引：第 3 帧 → 2）
+        win.Curves[0].MaxPoints = 2;
+        win.Add([3], null);
+        var last = win.Curves[0].LastPoint();
+        Assert.NotNull(last);
+        Assert.Equal(2, last!.Value.X);
+        Assert.Equal(3, last!.Value.Y);
+        // 清空后无点
+        win.ClearData();
+        Assert.Null(win.Curves[0].LastPoint());
+    }
+
+    [Fact]
+    public void XFromEnd_TracksRingWindow()
+    {
+        var plots = new PlotService();
+        var win = plots.GetOrCreate("w");
+        for (int i = 0; i < 5; i++) win.Add([i], null);
+        var curve = win.Curves[0];
+        Assert.Equal(4, curve.XFromEnd(0));   // back=0 即最新点 X
+        Assert.Equal(2, curve.XFromEnd(2));   // 往前数第 2 个点
+        Assert.Equal(0, curve.XFromEnd(999)); // 窗口比数据大 → 回退到最老点（曲线从左向右生长）
+        // 环形淘汰后仍正确
+        curve.MaxPoints = 3;
+        win.Add([100], null);                 // 存活 X=3,4,5
+        Assert.Equal(5, curve.XFromEnd(0));
+        Assert.Equal(3, curve.XFromEnd(2));
+        Assert.Equal(3, curve.XFromEnd(999)); // 越界回退到最老存活点
+        win.ClearData();
+        Assert.Null(curve.XFromEnd(0));
+    }
+
+    [Fact]
     public void AutoX_IncrementsPerFrame()
     {
         var plots = new PlotService();

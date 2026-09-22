@@ -42,6 +42,15 @@ public partial class MainWindow : Window
         public double[][] XBuf = [];
         public double[][] YBuf = [];
         public ScottPlot.Plottables.Scatter?[] Scatters = [];
+
+        // ---- 坐标轴显示窗口（示波器式：X=滚动点窗/固定窗，Y=固定幅度窗）----
+        public bool XAuto = true;          // X 自动跟随数据
+        public int XWindowPoints;          // >0：X 显示最近 N 个点（滚动窗口）
+        public double XMin, XMax;          // X 固定窗口
+        public bool YAuto = true;          // Y 自动跟随数据
+        public double YMin, YMax;          // Y 固定窗口（超出部分被裁剪出画面）
+        /// <summary>上次渲染后的轴范围（检测用户滚轮/拖拽：手动模式下以当前视图更新窗口）。</summary>
+        public ScottPlot.AxisLimits? LastLimits;
     }
 
     private const int MaxRenderPointsPerCurve = 4_000;   // 32KB/数组：低于 LOH 阈值
@@ -452,25 +461,28 @@ public partial class MainWindow : Window
         MainTabs.Items.Add(tab);
         MainTabs.SelectedItem = tab; // 新窗口出现时自动切换展示
 
-        var menu = new ContextMenu();
-        var rename = new MenuItem { Header = "重命名曲线..." };
-        rename.Click += (_, _) => RenameCurve(window);
-        var autoScale = new MenuItem { Header = "自动缩放" };
-        autoScale.Click += (_, _) => { plot.Plot.Axes.AutoScale(); plot.Refresh(); };
-        var clear = new MenuItem { Header = "清空本窗口数据" };
-        clear.Click += (_, _) => window.ClearData();
-        var close = new MenuItem { Header = "关闭本窗口" };
-        close.Click += (_, _) =>
+        // 菜单项注入 ScottPlot 右键菜单（WPF ContextMenu 会被其内置菜单拦截；
+        // 保留 ScottPlot 自带的 Auto-scale/Save image 等默认项，追加本项目功能）
+        plot.Menu!.Add("──", _ => { }); // 分隔（ScottPlot 菜单无分隔符类型，用禁用样式近似）
+        plot.Menu!.Add("自动缩放（跟随数据）", _ =>
+        {
+            if (_plotTabs.TryGetValue(window.Id, out var st))
+            {
+                st.XAuto = true;
+                st.YAuto = true;
+                st.XWindowPoints = 0;
+                st.Version = long.MinValue; // 强制下一拍重渲染
+            }
+        });
+        plot.Menu!.Add("设置坐标轴窗口...", _ => OpenAxisRangeDialog(window));
+        plot.Menu!.Add("重命名曲线...", _ => RenameCurve(window));
+        plot.Menu!.Add("清空本窗口数据", _ => window.ClearData());
+        plot.Menu!.Add("关闭本窗口", _ =>
         {
             MainTabs.Items.Remove(tab);
             _plotTabs.Remove(window.Id);
             _pipeline?.Plots.Remove(window.Id);
-        };
-        menu.Items.Add(rename);
-        menu.Items.Add(autoScale);
-        menu.Items.Add(clear);
-        menu.Items.Add(close);
-        plot.ContextMenu = menu;
+        });
 
         _plotTabs[window.Id] = new PlotTabState { Tab = tab, Plot = plot };
     }
@@ -546,9 +558,14 @@ public partial class MainWindow : Window
             }
         }
 
+        // 滚动窗口时只渲染窗口内的点（渲染量=窗口大小，其余模式渲染最近一批）
+        int renderCap = entry.XWindowPoints > 0
+            ? Math.Min(MaxRenderPointsPerCurve, Math.Max(2, entry.XWindowPoints))
+            : MaxRenderPointsPerCurve;
+
         for (int i = 0; i < curves.Count; i++)
         {
-            var take = curves[i].SnapshotInto(entry.XBuf[i], entry.YBuf[i], MaxRenderPointsPerCurve);
+            var take = curves[i].SnapshotInto(entry.XBuf[i], entry.YBuf[i], renderCap);
             if (entry.Scatters[i] is null)
             {
                 entry.Scatters[i] = plot.Add.Scatter(entry.XBuf[i], entry.YBuf[i]);
@@ -558,14 +575,123 @@ public partial class MainWindow : Window
             entry.Scatters[i]!.LegendText = curves[i].Name;
             entry.Scatters[i]!.Data.MaxRenderIndex = Math.Max(-1, take - 1);
         }
-        plot.Axes.AutoScale();
+        ApplyAxisMode(plot, entry, curves);
         entry.Plot.Refresh();
         sw.Stop();
 
         entry.RenderMs = entry.RenderMs * 0.7 + sw.Elapsed.TotalMilliseconds * 0.3;
-        entry.Tab.Header = $"{w.Title}  ({entry.RenderMs:F0}ms)";
+        entry.Tab.Header = $"{w.Title}  ({entry.RenderMs:F0}ms){AxisModeLabel(entry)}";
         entry.Version = w.Version;
         entry.LastRenderUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// 坐标轴显示窗口应用（示波器式）：
+    /// - X：自动跟随全部数据 / 滚动窗口（最近 N 点，新点右入、最老点左出）/ 固定范围；
+    /// - Y：自动跟随数据 / 固定窗口（超出窗口的数据被裁剪出画面，示波器行为）。
+    /// 手动模式下用户滚轮/拖拽改变视图即更新存储窗口（以当前视图为准）。
+    /// </summary>
+    private static void ApplyAxisMode(ScottPlot.Plot plot, PlotTabState entry, IReadOnlyList<Curve> curves)
+    {
+        var current = plot.Axes.GetLimits();
+        bool userChanged = entry.LastLimits.HasValue && !LimitsEqual(current, entry.LastLimits.Value);
+        if (userChanged)
+        {
+            // 渲染间隙用户动过视图（滚轮/拖拽）→ 视为手动调窗：更新固定窗口存储
+            if (!entry.XAuto && entry.XWindowPoints == 0) { entry.XMin = current.Left; entry.XMax = current.Right; }
+            if (!entry.YAuto) { entry.YMin = current.Bottom; entry.YMax = current.Top; }
+        }
+
+        if (entry.XAuto)
+        {
+            plot.Axes.AutoScaleX();
+        }
+        else if (entry.XWindowPoints > 0)
+        {
+            // 滚动窗口：右沿=最新点 X，左沿=往前第 N-1 个点的 X。
+            // 点数不足 N 时左沿回退到最老点，曲线从左向右生长（示波器行为）。
+            double? right = LatestX(curves);
+            double? left = WindowLeftX(curves, entry.XWindowPoints);
+            if (right.HasValue && left.HasValue && right.Value > left.Value)
+                plot.Axes.SetLimitsX(left.Value, right.Value);
+            else if (right.HasValue)
+                plot.Axes.SetLimitsX(right.Value - 1, right.Value + 1);
+        }
+        else
+        {
+            plot.Axes.SetLimitsX(entry.XMin, entry.XMax);
+        }
+
+        if (entry.YAuto) plot.Axes.AutoScaleY();
+        else plot.Axes.SetLimitsY(entry.YMin, entry.YMax);
+
+        entry.LastLimits = plot.Axes.GetLimits();
+    }
+
+    /// <summary>滚动窗口左沿：各曲线中"最新点往前第 windowPoints-1 个点"的 X。</summary>
+    private static double? WindowLeftX(IReadOnlyList<Curve> curves, int windowPoints)
+    {
+        int back = Math.Max(0, windowPoints - 1);
+        for (int i = curves.Count - 1; i >= 0; i--)
+        {
+            var x = curves[i].XFromEnd(back);
+            if (x.HasValue) return x.Value;
+        }
+        return null;
+    }
+
+    /// <summary>页签标题上的窗口模式标记：全自动无标记，否则 [滚动N点/X固定/Y固定]。</summary>
+    private static string AxisModeLabel(PlotTabState entry)
+    {
+        if (entry.XAuto && entry.YAuto) return "";
+        var parts = new List<string>(2);
+        if (!entry.XAuto)
+            parts.Add(entry.XWindowPoints > 0 ? $"滚动{entry.XWindowPoints}点" : "X固定");
+        if (!entry.YAuto) parts.Add("Y固定");
+        return " [" + string.Join("/", parts) + "]";
+    }
+
+    /// <summary>打开坐标轴显示窗口对话框（预填当前状态），确认后应用。</summary>
+    private void OpenAxisRangeDialog(PlotWindow window)
+    {
+        if (!_plotTabs.TryGetValue(window.Id, out var entry)) return;
+        var limits = entry.Plot.Plot.Axes.GetLimits();
+        var dialog = new SetAxisRangeWindow(
+            entry.XAuto, entry.XWindowPoints, limits.Left, limits.Right,
+            entry.YAuto, limits.Bottom, limits.Top)
+        {
+            Owner = this,
+        };
+        if (dialog.ShowDialog() == true)
+        {
+            entry.XAuto = dialog.XAuto;
+            entry.XWindowPoints = dialog.XAuto ? 0 : dialog.XWindowPoints;
+            entry.XMin = dialog.XMin;
+            entry.XMax = dialog.XMax;
+            entry.YAuto = dialog.YAuto;
+            entry.YMin = dialog.YMin;
+            entry.YMax = dialog.YMax;
+            entry.LastLimits = null; // 让下一拍直接应用设定值
+            entry.Version = long.MinValue; // 强制重渲染
+        }
+    }
+
+    private static double LatestX(IReadOnlyList<Curve> curves)
+    {
+        // 曲线缓冲为环形，最后一个写入点即最新点（start-1 位置）
+        for (int i = curves.Count - 1; i >= 0; i--)
+        {
+            var last = curves[i].LastPoint();
+            if (last.HasValue) return last.Value.X;
+        }
+        return 0;
+    }
+
+    private static bool LimitsEqual(ScottPlot.AxisLimits a, ScottPlot.AxisLimits b)
+    {
+        const double eps = 1e-9;
+        return Math.Abs(a.Left - b.Left) < eps && Math.Abs(a.Right - b.Right) < eps &&
+               Math.Abs(a.Bottom - b.Bottom) < eps && Math.Abs(a.Top - b.Top) < eps;
     }
 
     private static void ApplyDarkTheme(ScottPlot.Plot plot)

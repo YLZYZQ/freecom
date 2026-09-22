@@ -74,6 +74,32 @@ public sealed class Curve
 
     public long Count { get { lock (_lock) return _count; } }
 
+    /// <summary>最新写入的点（环形缓冲末元素）；无数据返回 null。供滚动窗口取最新 X。</summary>
+    public (double X, double Y)? LastPoint()
+    {
+        lock (_lock)
+        {
+            if (_count == 0) return null;
+            int index = (int)(((long)_start + _count - 1) % _xs.Length);
+            return (_xs[index], _ys[index]);
+        }
+    }
+
+    /// <summary>从最新点往前数第 back 个点的 X（back=0 即最新）；无数据返回 null。
+    /// back 超出当前点数时回退到最老点：滚动窗口比数据大时从首点起显示（曲线从左向右生长）。
+    /// 供示波器式滚动窗口计算"最近 N 点"的窗口左沿。</summary>
+    public double? XFromEnd(int back)
+    {
+        lock (_lock)
+        {
+            if (_count == 0) return null;
+            if (back < 0) back = 0;
+            if (back >= _count) back = (int)_count - 1;
+            int index = (int)(((long)_start + _count - 1 - back) % _xs.Length);
+            return _xs[index];
+        }
+    }
+
     public CurveSnapshot Snapshot(int maxPoints = int.MaxValue)
     {
         lock (_lock)
