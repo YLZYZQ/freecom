@@ -64,17 +64,18 @@
                     <MenuItem Header="关于 FreeCom" Click="About_OnClick"/>
                 </MenuItem>
             </Menu>
-            <!-- 主题开关 -->
+            <!-- 主题开关：两个半区各自动作（幂等选择，不取反） -->
             <Border HorizontalAlignment="Right" Margin="0,6,12,6" CornerRadius="12"
                     Background="{DynamicResource InputBrush}" BorderBrush="{DynamicResource BorderBrush}"
-                    BorderThickness="1" Cursor="Hand" MouseLeftButtonUp="ThemeToggle_OnMouseUp"
-                    ToolTip="切换 亮色 / 暗色 主题（对所有窗口生效）">
+                    BorderThickness="1" ToolTip="选择 亮色 / 暗色 主题（对所有窗口生效）">
                 <StackPanel Orientation="Horizontal" Height="24">
-                    <Border x:Name="PillDark" Width="66" CornerRadius="11,0,0,11" Background="Transparent">
+                    <Border x:Name="PillDark" Width="66" CornerRadius="11,0,0,11" Background="Transparent"
+                            Cursor="Hand" MouseLeftButtonUp="ThemeDark_OnMouseUp">
                         <TextBlock x:Name="TbThemeDark" Text="🌙 暗色" FontSize="11" HorizontalAlignment="Center"
                                    VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}"/>
                     </Border>
-                    <Border x:Name="PillLight" Width="66" CornerRadius="0,11,11,0" Background="Transparent">
+                    <Border x:Name="PillLight" Width="66" CornerRadius="0,11,11,0" Background="Transparent"
+                            Cursor="Hand" MouseLeftButtonUp="ThemeLight_OnMouseUp">
                         <TextBlock x:Name="TbThemeLight" Text="☀ 亮色" FontSize="11" HorizontalAlignment="Center"
                                    VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
                     </Border>
@@ -102,7 +103,9 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0" Margin="0,0,8,0">
                                 <TextBlock Style="{StaticResource FieldLabel}" Text="串口"/>
-                                <ComboBox x:Name="CbPort" IsEditable="True" FontFamily="Consolas, Courier New"/>
+                                <ComboBox x:Name="CbPort" FontFamily="Consolas, Courier New"
+                                          SelectionChanged="CbPort_OnSelectionChanged"
+                                          ToolTip="从列表选择端口（不可手输），⟳ 刷新列表"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1" VerticalAlignment="Bottom">
                                 <Button x:Name="BtnRefresh" Content="⟳" Width="32" Height="28" FontSize="13"
@@ -111,7 +114,9 @@
                         </Grid>
                         <StackPanel Margin="0,0,0,10">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="波特率"/>
-                            <ComboBox x:Name="CbBaud" IsEditable="True" Text="115200" FontFamily="Consolas, Courier New">
+                            <ComboBox x:Name="CbBaud" IsEditable="True" IsTextSearchEnabled="False"
+                                      Text="115200" FontFamily="Consolas, Courier New"
+                                      ToolTip="从列表选择常用波特率，也可直接输入任意值（回车确认）">
                                 <ComboBoxItem Content="9600"/>
                                 <ComboBoxItem Content="19200"/>
                                 <ComboBoxItem Content="38400"/>
@@ -282,8 +287,8 @@
                                 </StackPanel>
                             </TabItem.Header>
                             <RichTextBox x:Name="TbReceive" IsReadOnly="True"
-                                         Background="{DynamicResource CodeBrush}"
-                                         Foreground="{DynamicResource CodeTextBrush}"
+                                         Background="{DynamicResource DataBgBrush}"
+                                         Foreground="{DynamicResource TextPrimary}"
                                          FontFamily="Consolas, Courier New" FontSize="12.5"
                                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
                                          BorderThickness="0" IsUndoEnabled="False"

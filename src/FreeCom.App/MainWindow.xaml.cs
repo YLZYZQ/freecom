@@ -66,8 +66,9 @@ public partial class MainWindow : Window
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "FreeCom", "settings.json"));
         _settings = _settingsStore.Load();
-        Theme.Apply(_settings.Theme);
         Theme.Changed += OnThemeChanged;
+        Theme.Apply(_settings.Theme);
+        UpdateThemePill();
 
         foreach (var name in ProtocolRegistry.Names)
             CbProtocol.Items.Add(name);
@@ -128,7 +129,8 @@ public partial class MainWindow : Window
         if (autoConnect is not null)
             Loaded += (_, _) =>
             {
-                CbPort.Text = autoConnect;
+                // 串口框为纯下拉（不可手输）：仅当选中列表中存在的端口
+                if (CbPort.Items.Contains(autoConnect)) CbPort.SelectedItem = autoConnect;
                 OpenClose_OnClick(this, new RoutedEventArgs());
             };
 
@@ -140,6 +142,17 @@ public partial class MainWindow : Window
     // ---------------- 串口连接 ----------------
 
     private void RefreshPorts_OnClick(object sender, RoutedEventArgs e) => RefreshPorts();
+
+    /// <summary>连接状态下切换串口：原连接仍指向旧端口（收发无效），直接自动断开，由用户手动点"连接"重连。</summary>
+    private void CbPort_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        if (_pipeline is { IsTransportOpen: true })
+        {
+            CloseTransport();
+            TbSendHint.Text = "已切换端口，连接已断开——点击“连接”用新端口打开";
+        }
+    }
 
     private void RefreshPorts()
     {
@@ -736,11 +749,9 @@ public partial class MainWindow : Window
 
     // ---------------- 主题 ----------------
 
-    private void ThemeToggle_OnMouseUp(object sender, MouseButtonEventArgs e)
-    {
-        var target = Theme.IsDark ? Theme.Light : Theme.Dark;
-        Theme.Apply(target);
-    }
+    private void ThemeDark_OnMouseUp(object sender, MouseButtonEventArgs e) => Theme.Apply(Theme.Dark);
+
+    private void ThemeLight_OnMouseUp(object sender, MouseButtonEventArgs e) => Theme.Apply(Theme.Light);
 
     private void UpdateThemePill()
     {

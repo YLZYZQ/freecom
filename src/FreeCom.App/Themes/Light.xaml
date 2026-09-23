@@ -22,6 +22,7 @@
     <SolidColorBrush x:Key="WarnBrush" Color="#C0392B"/>
     <SolidColorBrush x:Key="CodeBrush" Color="#1E242C"/>
     <SolidColorBrush x:Key="CodeTextBrush" Color="#D6E2EE"/>
+    <SolidColorBrush x:Key="DataBgBrush" Color="#FFFFFF"/>
     <SolidColorBrush x:Key="StatusBrush" Color="#EDF0F4"/>
     <SolidColorBrush x:Key="ScrollTrackBrush" Color="#EDF0F4"/>
     <SolidColorBrush x:Key="ScrollThumbBrush" Color="#C3CCD7"/>
