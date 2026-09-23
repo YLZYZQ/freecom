@@ -72,6 +72,54 @@ public sealed class ApiFixture : IAsyncDisposable, IAsyncLifetime
         return (resp.StatusCode, Parse(await resp.Content.ReadAsStringAsync()));
     }
 
+    /// <summary>POST 并断言 200，返回已解包的 data。</summary>
+    public async Task<JsonElement> PostAsync(string path, string body)
+    {
+        var (status, json) = await SendAsync(HttpMethod.Post, path, body);
+        Assert.True(status == HttpStatusCode.OK, $"POST {path} -> {status}");
+        return json.GetProperty("data");
+    }
+
+    /// <summary>GET 并断言 200，返回已解包的 data（McpToolsTests 用）。</summary>
+    public async Task<JsonElement> GetDataAsync(string path)
+    {
+        var json = await GetAsync(path);
+        return json.GetProperty("data");
+    }
+
+    /// <summary>关闭设备侧回显端口（模拟器测试需独占对端）。</summary>
+    public void ClosePeer()
+    {
+        Peer?.Dispose();
+        Peer = null;
+    }
+
+    /// <summary>仅打开 App 侧串口（不建回显对端），并返回设备侧端口名。</summary>
+    public async Task OpenAppOnlyAsync()
+    {
+        if (Pipeline.TransportState != TransportState.Open)
+            await Surface.OpenTransportAsync(new OpenTransportRequest("serial",
+                new Dictionary<string, string> { ["port"] = AppPort, ["baud"] = "115200" }));
+    }
+
+    /// <summary>带状态码的快捷方法（McpToolsTests 用）。</summary>
+    public Task<(HttpStatusCode, JsonElement)> PostExpectStatusAsync(string path, string body)
+        => SendAsync(HttpMethod.Post, path, body);
+
+    public Task<(HttpStatusCode, JsonElement)> GetExpectStatusAsync(string path)
+        => SendAsync(HttpMethod.Get, path, null);
+
+    public Task<(HttpStatusCode, JsonElement)> DeleteExpectStatusAsync(string path)
+        => SendAsync(HttpMethod.Delete, path, null);
+
+    /// <summary>原始请求：返回 (状态码, 原始 body)（探针/调查用）。</summary>
+    public async Task<(HttpStatusCode Status, string Body)> RawSendAsync(HttpMethod method, string path)
+    {
+        using var req = new HttpRequestMessage(method, path);
+        using var resp = await Http.SendAsync(req);
+        return (resp.StatusCode, await resp.Content.ReadAsStringAsync());
+    }
+
     private static JsonElement Parse(string json)
     {
         using var doc = JsonDocument.Parse(json);
@@ -165,8 +213,8 @@ public class ControlApiTests : IClassFixture<ApiFixture>
     {
         var json = await _fx.GetAsync("/v1/capabilities");
         var data = json.GetProperty("data");
-        Assert.Equal(14, data.GetProperty("endpoints").GetArrayLength());
-        Assert.Equal(13, data.GetProperty("tools").GetArrayLength());
+        Assert.Equal(27, data.GetProperty("endpoints").GetArrayLength());
+        Assert.Equal(25, data.GetProperty("tools").GetArrayLength());
         Assert.Equal(5, data.GetProperty("protocols").GetArrayLength());
         var transports = data.GetProperty("transports").EnumerateArray().Select(t => t.GetString()).ToList();
         Assert.Equal(["serial"], transports); // v0.1.1：唯一传输类型为串口（虚拟串口对亦走串口）

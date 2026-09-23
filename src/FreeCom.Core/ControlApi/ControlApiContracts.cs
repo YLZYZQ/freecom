@@ -39,6 +39,30 @@ public sealed record EndpointDto(string Method, string Path, string Description)
 
 public sealed record McpToolDto(string Name, string Description, string InputSchemaJson);
 
+// ---------------- MCP v0.2 新增（P0/P1） ----------------
+
+public sealed record WaitRequest(long Since, string? Contains, string? Direction, int TimeoutMs, int Limit, string? Format);
+
+public sealed record WaitResultDto(bool Matched, long ElapsedMs, long NextSeq, IReadOnlyList<ReceiveItemDto> Items);
+
+public sealed record ExpectRequest(SendRequest Send, string? Contains, string? Direction, int TimeoutMs, string? Format);
+
+public sealed record ExpectResultDto(long SentBytes, WaitResultDto Wait);
+
+public sealed record VcomPairDto(int PairNumber, string PortA, string PortB);
+
+public sealed record SimulatorStartRequest(string Port, string Protocol, int IntervalMs);
+
+public sealed record SimulatorStatusDto(
+    bool Running, string? Port, string? Protocol, int IntervalMs,
+    long SentFrames, long SentBytes, string? LastError);
+
+public sealed record CurveStatsDto(string Curve, long Count, double Min, double Max, double Mean, double First, double Last);
+
+public sealed record PlotWindowStatsDto(string Id, string Title, IReadOnlyList<CurveStatsDto> Curves);
+
+public sealed record SendRecordDto(long Seq, string Time, long Bytes, string Text, string Hex);
+
 public sealed record CapabilitiesDto(
     string App,
     string Version,
@@ -62,4 +86,21 @@ public interface IControlSurface
     IReadOnlyList<PlotWindowDto> GetPlotWindows();
     PlotWindowDataDto? GetPlotWindowData(string idOrTitle, int maxPoints);
     Task<string> ExportCurvesAsync(string? windowId, string? path);
+
+    // ---------------- MCP v0.2 新增（P0/P1） ----------------
+    Task<WaitResultDto> WaitReceiveAsync(WaitRequest request, CancellationToken ct);
+    Task<ExpectResultDto> SendExpectAsync(ExpectRequest request, CancellationToken ct);
+    IReadOnlyList<ProtocolHelp> GetProtocolHelp(string? name);
+    PlotWindowStatsDto? GetPlotWindowStats(string idOrTitle);
+    IReadOnlyList<SendRecordDto> GetSendHistory(int limit);
+    Task<string> ExportRawAsync(string? path, string? direction);
+    Task<string> ExportDisplayAsync(string? path, bool timestamp, bool hex);
+
+    // 虚拟串口对（com0com）与设备模拟器：宿主级能力
+    IReadOnlyList<VcomPairDto> ListVcomPairs();
+    Task<VcomPairDto> CreateVcomPairAsync(string? portA, string? portB);
+    Task RemoveVcomPairAsync(string pairNumber);
+    SimulatorStatusDto StartSimulator(SimulatorStartRequest request);
+    SimulatorStatusDto StopSimulator();
+    SimulatorStatusDto GetSimulatorStatus();
 }

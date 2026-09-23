@@ -35,6 +35,40 @@ public sealed class DataPipeline : IDisposable
     public RawLog Raw { get; }
     public PlotService Plots { get; }
 
+    // ---------------- 发送审计（MCP send_history 数据源：UI 与 API 的发送都经此处） ----------------
+    public sealed record SendAudit(long Seq, DateTime TimeUtc, long Bytes, string Text, string Hex);
+
+    private readonly object _auditLock = new();
+    private readonly Queue<SendAudit> _sendAudits = new();
+    private const int MaxAudits = 50;
+
+    /// <summary>最近发送记录（新→旧）：UI 与 API 的全部发送都在此审计。</summary>
+    public IReadOnlyList<SendAudit> GetSendHistory(int limit = 20)
+    {
+        limit = Math.Clamp(limit <= 0 ? 20 : limit, 1, MaxAudits);
+        lock (_auditLock) return _sendAudits.Reverse().Take(limit).ToList();
+    }
+
+    private void RecordSend(byte[] bytes)
+    {
+        // 末 64B 预览：不可打印字节以 '.' 占位，控制字符转义
+        var text = new StringBuilder();
+        foreach (var b in bytes.AsSpan(Math.Max(0, bytes.Length - 64)))
+        {
+            if (b is 0x0A) text.Append("\\n");
+            else if (b is 0x0D) text.Append("\\r");
+            else if (b is 0x09) text.Append("\\t");
+            else if (b is >= 0x20 and < 0x7F) text.Append((char)b);
+            else text.Append('.');
+        }
+        var hex = HexParse.ToHexSpaced(bytes.AsSpan(Math.Max(0, bytes.Length - 64)));
+        lock (_auditLock)
+        {
+            _sendAudits.Enqueue(new SendAudit(_sendAudits.Count + 1, DateTime.UtcNow, bytes.Length, text.ToString(), hex));
+            while (_sendAudits.Count > MaxAudits) _sendAudits.Dequeue();
+        }
+    }
+
     public DataPipeline(IProtocolParser parser, PipelineOptions? options = null)
     {
         options ??= new PipelineOptions();
@@ -181,6 +215,7 @@ public sealed class DataPipeline : IDisposable
         if (bytes.Length == 0) return;
         // 隔离调用方可能复用的数组，再由原始/显示日志共享这一份只读数据。
         bytes = bytes.ToArray();
+        RecordSend(bytes);
         Counters.AddTx(bytes.Length);
         Raw.AppendOwned(DataDirection.Tx, bytes);
         Display.AppendOwned(DataDirection.Tx, bytes);

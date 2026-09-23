@@ -30,7 +30,7 @@ public partial class VcomManagerWindow : Window
         if (!_manager.DriverInstalled) return;
         try
         {
-            foreach (var pair in _manager.ListPairs())
+            foreach (var pair in _manager.ListPairs(allowElevate: true))
                 LbPairs.Items.Add($"{pair.PortA}  ↔  {pair.PortB}    (配对 #{pair.IdA.Replace("CNCA", "")})");
         }
         catch (ElevationCancelledException)

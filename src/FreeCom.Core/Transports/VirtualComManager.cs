@@ -163,12 +163,55 @@ public sealed class VirtualComManager
         return fileOutput;
     }
 
-    /// <summary>列出当前端口对：只读查询优先免提权直接执行（不弹 UAC），失败再走提权。</summary>
-    public List<VirtualComPair> ListPairs()
+    /// <summary>列出当前端口对：① PnP 设备名解析（免管理员、毫秒级，首选）；
+    /// ② setupc 直查（本机 build 要求管理员，通常失败）；
+    /// ③ allowElevate=true 时提权回落（UI 场景；API/MCP 不允许弹 UAC）。</summary>
+    public List<VirtualComPair> ListPairs(bool allowElevate = false)
     {
+        var pnp = ListPairsFromPnp();
+        if (pnp.Count > 0) return pnp;
         var direct = TryRunSetupcDirect("list");
         if (direct is not null) return ParseListOutput(direct);
+        if (!allowElevate)
+            throw new InvalidOperationException("端口对查询需要管理员权限（免提权查询失败）。请在 UI 的虚拟串口管理器中刷新。");
         return ParseListOutput(RunSetupc("list"));
+    }
+
+    /// <summary>从 PnP 设备友好名解析端口对："com0com - serial port emulator CNCA0 (COM20)"。
+    /// 普通用户可读（WMI），无 UAC、毫秒级。</summary>
+    internal static List<VirtualComPair> ListPairsFromPnp()
+    {
+        var byId = new Dictionary<string, string>(); // "CNCA0" -> "COM20"
+        try
+        {
+            using var searcher = new System.Management.ManagementObjectSearcher(
+                "SELECT Name FROM Win32_PnPEntity WHERE Name LIKE '%com0com%'");
+            foreach (var obj in searcher.Get())
+            {
+                var name = obj["Name"] as string;
+                if (string.IsNullOrEmpty(name)) continue;
+                var idMatch = System.Text.RegularExpressions.Regex.Match(name, @"(CNC[AB]\d+)");
+                var portMatch = System.Text.RegularExpressions.Regex.Match(name, @"\((COM\d+)\)");
+                if (idMatch.Success && portMatch.Success)
+                    byId[idMatch.Groups[1].Value.ToUpperInvariant()] = portMatch.Groups[1].Value;
+            }
+        }
+        catch
+        {
+            return []; // WMI 不可用时静默回落 setupc 路径
+        }
+        var pairs = new List<VirtualComPair>();
+        foreach (var (id, _) in byId)
+        {
+            if (!id.StartsWith("CNCA")) continue;
+            var peer = id.Replace("CNCA", "CNCB");
+            if (byId.TryGetValue(peer, out var portB))
+            {
+                var number = id[4..];
+                pairs.Add(new VirtualComPair(id, peer, byId[id], portB));
+            }
+        }
+        return pairs.OrderBy(p => p.PortA, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     /// <summary>免提权直接运行 setupc（只用于查询类命令）；启动失败/超时/非零退出返回 null。</summary>

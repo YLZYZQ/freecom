@@ -1,8 +1,8 @@
-# FreeCom 免费串口调试助手（v0.1.1）
+# FreeCom 免费串口调试助手（v0.2）
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-全功能免费、无账户、无授权、**MIT 开源**的串口调试上位机。v0.1.1：串口通信 + 5 种协议多窗口绘图 + 本地 Control API + MCP AI 自动化 + **虚拟串口（com0com）与设备模拟器**（原"虚拟回环"已移除）。
+全功能免费、无账户、无授权、**MIT 开源**的串口调试上位机。v0.2：串口通信 + 5 种协议多窗口绘图 + 本地 Control API + MCP AI 自动化（P0/P1 工具集）+ **虚拟串口（com0com）与设备模拟器**（原"虚拟回环"已移除）。
 
 > 许可：本项目代码以 MIT 协议开源（见 [LICENSE](LICENSE)）。可选依赖 com0com 驱动为第三方 GPL 项目，不随本仓库分发，使用时按需自行下载（见"虚拟串口"章节）。
 
@@ -20,7 +20,7 @@
 | 绘图窗口 | 多窗口多曲线（每窗 16 条）、默认窗口继承、ScottPlot 渲染、曲线重命名、抽稀与点数上限、**示波器式坐标轴窗口（X 滚动 N 点窗 / X 固定范围，Y 固定窗口超出裁剪）** |
 | **虚拟串口管理器**（新） | 基于 com0com 创建/删除真实 COM 端口对（UAC 提权）；驱动检测与下载引导（SHA256 校验） |
 | **设备模拟器**（新） | 以"下位机"身份占用端口对另一端：五协议流量按间隔发送 + 手动文本/HEX 发送 |
-| MCP/AI | 本地 Control HTTP API（127.0.0.1 + Bearer Token，14 端点）+ `freecom-mcp.exe`（13 工具） |
+| MCP/AI | 本地 Control HTTP API（127.0.0.1 + Bearer Token，27 端点）+ `freecom-mcp.exe`（25 工具：收发/等待/期望回显、模拟器、曲线统计、协议帮助、发送历史、原始与显示导出、虚拟串口对管理） |
 | 数据 | 原始 DAT / 显示 TXT / 曲线 CSV 导出；JSON 配置（schema v2，自动迁移 v1 虚拟回环配置） |
 
 ## 虚拟串口（首次使用）
@@ -33,7 +33,7 @@
 
 ## 构建 / 测试 / 运行
 
-一键验证（CMD/PowerShell/双击）：`串口上位机\run_verify.cmd`（构建 + 146 项测试 + E2E 13 项断言）。
+一键验证（CMD/PowerShell/双击）：`串口上位机\run_verify.cmd`（构建 + 229 项测试 + E2E 13 项断言）。
 
 **测试基座（v0.1.1 起）**：全部自动化测试运行在 **com0com 虚拟串口对的真实串口路径**上（SerialPort API → Windows 串口栈 → 驱动），不依赖物理串口硬件；原进程内"虚拟回环"已删除。运行测试的前置条件 = 端口对存在（可用环境变量 `FREECOM_TEST_PAIRS="A:B,C:D"` 覆盖默认对）。
 
@@ -42,7 +42,7 @@ Git Bash 手动执行：
 ```bash
 cd /c/Users/admin/Desktop/串口上位机/freecom
 export DOTNET_ROOT="C:\Users\admin\dotnet8"
-/c/Users/admin/dotnet8/dotnet.exe test tests/FreeCom.Tests/FreeCom.Tests.csproj   # 146 项
+/c/Users/admin/dotnet8/dotnet.exe test tests/FreeCom.Tests/FreeCom.Tests.csproj   # 229 项
 bash tests/tools/e2e_mvp.sh                                                      # E2E 13 项（真实串口路径）
 ```
 
@@ -59,7 +59,7 @@ bash tests/tools/e2e_mvp.sh                                                     
 
 1. FreeCom → 工具 → 勾选 **启用 MCP 服务**，查看 Token；
 2. 客户端配置 `freecom-mcp.exe`（同目录），环境变量 `FREECOM_URL=http://127.0.0.1:17340`、`FREECOM_TOKEN=<Token>`；
-3. 工具：`diag_connectivity` `serial_list` `serial_open/close/status` `device_send` `receive_read` `protocol_get/set` `plot_windows` `plot_data` `curve_export` `app_info`。仅监听 127.0.0.1，无遥测。
+3. 工具（25 个）：`diag_connectivity` `serial_list` `serial_open/close/status` `device_send` `receive_read` `receive_wait` `send_expect` `send_history` `protocol_get/set` `protocol_help` `plot_windows` `plot_data` `curve_stats` `curve_export` `export_raw` `export_display` `simulator_start/stop` `vcom_list/create/remove` `app_info`。仅监听 127.0.0.1，无遥测。
 
 ## 目录结构
 
@@ -69,6 +69,6 @@ freecom/
 ├─ src/FreeCom.App/     # WPF 主界面 + 虚拟串口管理器 + 设备模拟器
 ├─ src/FreeCom.Mcp/     # MCP stdio 桥
 ├─ src/FreeCom.Host/    # 无头测试宿主（真实串口双端）
-├─ tests/               # 146 项测试（真实虚拟串口路径）+ e2e_mvp.sh
+├─ tests/               # 229 项测试（真实虚拟串口路径）+ e2e_mvp.sh
 └─ tools/com0com/       # 驱动安装包与建对脚本（开发机预置）
 ```
