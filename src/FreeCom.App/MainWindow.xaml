@@ -1,7 +1,8 @@
 <Window x:Class="FreeCom.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="FreeCom 免费串口调试助手 v0.2" Height="760" Width="1240"
+        Title="FreeCom 免费串口调试助手 v0.2"
+        Icon="/freecom.ico" Height="760" Width="1240"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource WindowBrush}"
         Closing="MainWindow_OnClosing">
