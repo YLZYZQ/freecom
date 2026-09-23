@@ -17,7 +17,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" Margin="0,0,12,0">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="端口"/>
-                            <ComboBox x:Name="CbPort" Width="120" Style="{StaticResource Mono}"/>
+                            <ComboBox x:Name="CbPort" Width="120" FontFamily="Consolas, Courier New"/>
                         </StackPanel>
                         <StackPanel Grid.Column="1" Margin="0,0,12,0">
                             <Grid>
@@ -26,11 +26,11 @@
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Style="{StaticResource FieldLabel}" Text="协议"/>
-                                    <ComboBox x:Name="CbProtocol" Width="116" Style="{StaticResource Mono}"/>
+                                    <ComboBox x:Name="CbProtocol" Width="116" FontFamily="Consolas, Courier New"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
                                     <TextBlock Style="{StaticResource FieldLabel}" Text="间隔(ms)"/>
-                                    <TextBox x:Name="TbInterval" Width="72" Text="100" Style="{StaticResource Mono}"/>
+                                    <TextBox x:Name="TbInterval" Width="72" Text="100" FontFamily="Consolas, Courier New"/>
                                 </StackPanel>
                             </Grid>
                         </StackPanel>
@@ -46,7 +46,7 @@
 
             <!-- 手动发送 -->
             <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                <TextBox x:Name="TbManual" Width="340" Height="32" Style="{StaticResource Mono}"/>
+                <TextBox x:Name="TbManual" Width="340" Height="32" FontFamily="Consolas, Courier New"/>
                 <RadioButton x:Name="RbText" Content="文本" Style="{StaticResource SegmentItem}" GroupName="m"
                              IsChecked="True" Margin="10,0,0,0" VerticalAlignment="Center"/>
                 <RadioButton x:Name="RbHex" Content="HEX" Style="{StaticResource SegmentItem}" GroupName="m"

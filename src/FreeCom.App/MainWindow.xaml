@@ -101,7 +101,7 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0" Margin="0,0,8,0">
                                 <TextBlock Style="{StaticResource FieldLabel}" Text="串口"/>
-                                <ComboBox x:Name="CbPort" IsEditable="True" Style="{StaticResource Mono}"/>
+                                <ComboBox x:Name="CbPort" IsEditable="True" FontFamily="Consolas, Courier New"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1" VerticalAlignment="Bottom">
                                 <Button x:Name="BtnRefresh" Content="⟳" Width="32" Height="28" FontSize="13"
@@ -110,7 +110,7 @@
                         </Grid>
                         <StackPanel Margin="0,0,0,10">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="波特率"/>
-                            <ComboBox x:Name="CbBaud" IsEditable="True" Text="115200" Style="{StaticResource Mono}">
+                            <ComboBox x:Name="CbBaud" IsEditable="True" Text="115200" FontFamily="Consolas, Courier New">
                                 <ComboBoxItem Content="9600"/>
                                 <ComboBoxItem Content="19200"/>
                                 <ComboBoxItem Content="38400"/>
@@ -127,14 +127,14 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0">
                                 <TextBlock Style="{StaticResource FieldLabel}" Text="数据位"/>
-                                <ComboBox x:Name="CbDataBits" Style="{StaticResource Mono}">
+                                <ComboBox x:Name="CbDataBits" FontFamily="Consolas, Courier New">
                                     <ComboBoxItem Content="5"/><ComboBoxItem Content="6"/><ComboBoxItem Content="7"/>
                                     <ComboBoxItem Content="8" IsSelected="True"/>
                                 </ComboBox>
                             </StackPanel>
                             <StackPanel Grid.Column="2">
                                 <TextBlock Style="{StaticResource FieldLabel}" Text="停止位"/>
-                                <ComboBox x:Name="CbStopBits" Style="{StaticResource Mono}">
+                                <ComboBox x:Name="CbStopBits" FontFamily="Consolas, Courier New">
                                     <ComboBoxItem Content="1" IsSelected="True"/>
                                     <ComboBoxItem Content="1.5"/>
                                     <ComboBoxItem Content="2"/>
@@ -229,7 +229,7 @@
                             <CheckBox x:Name="CkCyclic" Content="循环发送" Style="{StaticResource PillCheckBox}" Margin="16,0,0,0"/>
                             <TextBlock Text="间隔(ms)" FontSize="11" Foreground="{DynamicResource TextSecondary}"
                                        VerticalAlignment="Center" Margin="10,0,6,0"/>
-                            <TextBox x:Name="TbInterval" Width="58" Text="1000" Style="{StaticResource Mono}"/>
+                            <TextBox x:Name="TbInterval" Width="58" Text="1000" FontFamily="Consolas, Courier New"/>
                             <TextBlock x:Name="TbSendHint" Foreground="{DynamicResource WarnBrush}" FontSize="11"
                                        VerticalAlignment="Center" Margin="14,0,0,0"/>
                         </StackPanel>
@@ -240,7 +240,7 @@
                                 <ColumnDefinition Width="150"/>
                             </Grid.ColumnDefinitions>
                             <TextBox x:Name="TbSend" Grid.Column="0" Height="52" TextWrapping="Wrap" FontSize="12.5"
-                                     Style="{StaticResource Mono}" VerticalScrollBarVisibility="Auto"
+                                     FontFamily="Consolas, Courier New" VerticalScrollBarVisibility="Auto"
                                      KeyDown="TbSend_OnKeyDown"
                                      ToolTip="Ctrl+Enter 快速发送"/>
                             <Button Grid.Column="1" x:Name="BtnSend" Content="发送" Width="84" Height="52" Margin="10,0,0,0"
