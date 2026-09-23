@@ -915,7 +915,7 @@ public partial class MainWindow : Window
         McpInfo.Header = on
             ? $"MCP：http://127.0.0.1:17340  Token: {_settings.McpToken}"
             : "MCP 状态：未启用";
-        BtnMcp.Content = on ? "🤖 MCP AI 自动化 · 已启用" : "🤖 MCP AI 自动化 · 未启用";
+        TbMcpLabel.Text = on ? "MCP AI 自动化 · 已启用" : "MCP AI 自动化 · 未启用";
         BtnMcp.Foreground = on
             ? (System.Windows.Media.Brush)FindResource("AccentBrush")
             : (System.Windows.Media.Brush)FindResource("TextSecondary");

@@ -177,8 +177,12 @@
                         <StackPanel Margin="0,0,0,6">
                             <ComboBox x:Name="CbProtocol" SelectionChanged="Protocol_OnSelectionChanged"/>
                         </StackPanel>
-                        <Button Style="{StaticResource LinkButton}" Content="⟱ 协议格式说明"
-                                HorizontalAlignment="Left" Margin="0,0,0,14" Click="ProtocolHelp_OnClick"/>
+                        <Button Style="{StaticResource LinkButton}" HorizontalAlignment="Left" Margin="0,0,0,14" Click="ProtocolHelp_OnClick">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#x27F1;" Width="20" TextAlignment="Center" FontSize="12.5" VerticalAlignment="Center"/>
+                                <TextBlock Text="协议格式说明" VerticalAlignment="Center" Margin="2,0,0,0"/>
+                            </StackPanel>
+                        </Button>
 
                         <!-- 连接主按钮 + 状态 -->
                         <Button x:Name="BtnOpen" Content="连接" Height="38" FontSize="14"
@@ -188,11 +192,26 @@
 
                         <Separator Margin="0,0,0,10"/>
                         <TextBlock Style="{StaticResource SectionLabel}" Text="工 具"/>
+                        <!-- 图标与文字分离：图标列固定 20px 垂直居中，避免 emoji/符号基线不齐 -->
                         <StackPanel>
-                            <Button Style="{StaticResource LinkButton}" Content="⎋ 虚拟串口管理器" Click="VcomManager_OnClick" Margin="0,0,0,2"/>
-                            <Button Style="{StaticResource LinkButton}" Content="⚙ 设备模拟器" Click="DeviceSimulator_OnClick" Margin="0,0,0,2"/>
-                            <Button x:Name="BtnExport" Style="{StaticResource LinkButton}" Content="⤓ 数据导出 ▾" Click="ExportMenu_OnClick" Margin="0,0,0,2"
+                            <Button Style="{StaticResource LinkButton}" Click="VcomManager_OnClick" Margin="0,0,0,2">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#x21C4;" Width="20" TextAlignment="Center" FontSize="12.5" VerticalAlignment="Center"/>
+                                    <TextBlock Text="虚拟串口管理器" VerticalAlignment="Center" Margin="2,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource LinkButton}" Click="DeviceSimulator_OnClick" Margin="0,0,0,2">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#x2699;&#xFE0E;" Width="20" TextAlignment="Center" FontSize="12" VerticalAlignment="Center"/>
+                                    <TextBlock Text="设备模拟器" VerticalAlignment="Center" Margin="2,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="BtnExport" Style="{StaticResource LinkButton}" Click="ExportMenu_OnClick" Margin="0,0,0,2"
                                     ContextMenuService.Placement="Bottom">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#x21E9;" Width="20" TextAlignment="Center" FontSize="12.5" VerticalAlignment="Center"/>
+                                    <TextBlock Text="数据导出 ▾" VerticalAlignment="Center" Margin="2,0,0,0"/>
+                                </StackPanel>
                                 <Button.ContextMenu>
                                     <ContextMenu>
                                         <MenuItem Header="原始数据 (.dat)" Click="ExportRaw_OnClick"/>
@@ -201,8 +220,12 @@
                                     </ContextMenu>
                                 </Button.ContextMenu>
                             </Button>
-                            <Button x:Name="BtnMcp" Style="{StaticResource LinkButton}" Content="🤖 MCP AI 自动化 · 未启用"
-                                    Click="McpSidebar_OnClick" Margin="0,0,0,2"/>
+                            <Button x:Name="BtnMcp" Style="{StaticResource LinkButton}" Click="McpSidebar_OnClick" Margin="0,0,0,2">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#x26A1;&#xFE0E;" Width="20" TextAlignment="Center" FontSize="12" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="TbMcpLabel" Text="MCP AI 自动化 · 未启用" VerticalAlignment="Center" Margin="2,0,0,0"/>
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
