@@ -1,4 +1,4 @@
-# FreeCom UI 全面测试套件 v3（UIA）：主窗口/收发/协议绘图/轴对话框/导出/子窗口/主题/MCP 开关
+﻿# FreeCom UI 全面测试套件 v3（UIA）：主窗口/收发/协议绘图/轴对话框/导出/子窗口/主题/MCP 开关
 # v3 修复：①主窗控件查找经 Find-MainById 限定主窗窗口（owned 子窗口挂主窗子树下会撞 AutomationId）
 #        ②状态元素每次重新查找（WPF 数据流中 UIA 元素会重建）③循环发送限时防写满只写不读的对端缓冲
 $ErrorActionPreference = 'Continue'

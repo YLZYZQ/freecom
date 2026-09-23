@@ -1,4 +1,4 @@
-# FreeCom MCP 第一轮：发布版 App 直调 Control API 全 27 端点扫描（正常路径 + 错误路径）
+﻿# FreeCom MCP 第一轮：发布版 App 直调 Control API 全 27 端点扫描（正常路径 + 错误路径）
 # 前置：FreeCom.App 运行中且已启用 MCP 服务（17340）
 $ErrorActionPreference = 'Continue'
 $Token = 'freecom-a33b2719d2604832af35697966dd40fd'
