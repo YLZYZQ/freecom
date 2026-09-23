@@ -127,6 +127,24 @@ public sealed class Curve
         }
     }
 
+    /// <summary>零分配渲染路径（滚动窗口用）：复制末尾 maxPoints 个点（不抽稀），返回实际写入点数。
+    /// SnapshotInto 是全曲线均匀抽稀，滚动窗口必须精确取最新 N 点。</summary>
+    public int SnapshotTailInto(double[] xs, double[] ys, int maxPoints)
+    {
+        lock (_lock)
+        {
+            int cap = Math.Max(0, Math.Min(Math.Min(maxPoints, xs.Length), ys.Length));
+            int take = Math.Min(cap, _count);
+            for (int i = 0; i < take; i++)
+            {
+                int source = (int)(((long)_start + _count - take + i) % _xs.Length);
+                xs[i] = _xs[source];
+                ys[i] = _ys[source];
+            }
+            return take;
+        }
+    }
+
     private void CopySnapshot(double[] xs, double[] ys, int take)
     {
         for (int i = 0; i < take; i++)

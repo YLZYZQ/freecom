@@ -96,6 +96,13 @@ public partial class MainWindow : Window
         _uiTimer.Start();
         _plotTimer.Start();
 
+        // 最小化/还原期间发生的渲染可能不落到画面（WPF 跳过不可见控件的绘制），
+        // 但 Version 已标记为已渲染 → 还原后一直显示旧位图。激活时强制重渲染。
+        Activated += (_, _) =>
+        {
+            foreach (var st in _plotTabs.Values) st.Version = long.MinValue;
+        };
+
         ApplySettings();
         RefreshPorts();
         if (_settings.McpToken is null)
@@ -457,6 +464,7 @@ public partial class MainWindow : Window
     {
         var plot = new WpfPlot();
         ApplyDarkTheme(plot.Plot);
+        ApplyXTickStyle(plot);
         var tab = new TabItem { Header = $"{window.Title}  (绘图)", Content = plot };
         MainTabs.Items.Add(tab);
         MainTabs.SelectedItem = tab; // 新窗口出现时自动切换展示
@@ -558,14 +566,16 @@ public partial class MainWindow : Window
             }
         }
 
-        // 滚动窗口时只渲染窗口内的点（渲染量=窗口大小，其余模式渲染最近一批）
+        // 滚动窗口时只渲染窗口内的点：精确取最新 N 点（SnapshotInto 是全曲线抽稀，窗口窄时会把旧点抽进来）
         int renderCap = entry.XWindowPoints > 0
             ? Math.Min(MaxRenderPointsPerCurve, Math.Max(2, entry.XWindowPoints))
             : MaxRenderPointsPerCurve;
 
         for (int i = 0; i < curves.Count; i++)
         {
-            var take = curves[i].SnapshotInto(entry.XBuf[i], entry.YBuf[i], renderCap);
+            var take = entry.XWindowPoints > 0
+                ? curves[i].SnapshotTailInto(entry.XBuf[i], entry.YBuf[i], renderCap)
+                : curves[i].SnapshotInto(entry.XBuf[i], entry.YBuf[i], renderCap);
             if (entry.Scatters[i] is null)
             {
                 entry.Scatters[i] = plot.Add.Scatter(entry.XBuf[i], entry.YBuf[i]);
@@ -706,6 +716,15 @@ public partial class MainWindow : Window
         plot.YLabel("value");
     }
 
+    /// <summary>X 轴刻度样式：索引型协议（X=帧序号）只显示整数刻度；
+    /// STAMP 的 X 为下位机时间戳（可为小数），保持默认数值刻度。</summary>
+    private void ApplyXTickStyle(WpfPlot plot)
+    {
+        bool integerOnly = !string.Equals(_pipeline?.ProtocolName, "STAMP", StringComparison.OrdinalIgnoreCase);
+        if (plot.Plot.Axes.Bottom.TickGenerator is ScottPlot.TickGenerators.NumericAutomatic numeric)
+            numeric.IntegerTicksOnly = integerOnly;
+    }
+
     // ---------------- 协议切换 ----------------
 
     private void Protocol_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -716,6 +735,12 @@ public partial class MainWindow : Window
         try
         {
             _pipeline?.SetParser(ProtocolRegistry.Create(name));
+            // 协议切换后同步已开绘图页的 X 轴刻度样式（整数/小数）
+            foreach (var st in _plotTabs.Values)
+            {
+                ApplyXTickStyle(st.Plot);
+                st.Version = long.MinValue; // 强制重渲染，刻度样式即时生效
+            }
         }
         catch (Exception ex)
         {

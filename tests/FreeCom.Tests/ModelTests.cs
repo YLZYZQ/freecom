@@ -59,6 +59,30 @@ public class PlotServiceTests
     }
 
     [Fact]
+    public void SnapshotTailInto_TakesNewestExactly()
+    {
+        var plots = new PlotService();
+        var win = plots.GetOrCreate("w");
+        for (int i = 0; i < 100; i++) win.Add([i], null);
+        var curve = win.Curves[0];
+        var xs = new double[5]; var ys = new double[5];
+        // 滚动窗口渲染：取末尾 N 点（对比 SnapshotInto 的全曲线均匀抽稀）
+        var take = curve.SnapshotTailInto(xs, ys, 5);
+        Assert.Equal(5, take);
+        Assert.Equal([95.0, 96, 97, 98, 99], xs);
+        Assert.Equal([95.0, 96, 97, 98, 99], ys);
+        // 请求超过现有点数 → 全量
+        var big = new double[200]; var bigY = new double[200];
+        Assert.Equal(100, curve.SnapshotTailInto(big, bigY, 200));
+        Assert.Equal(99.0, big[99]);
+        // 环形淘汰后仍取最新（MaxPoints=10 保留 X=90..99，再 Add X=100 → 存活 91..100）
+        curve.MaxPoints = 10;
+        win.Add([100], null);
+        Assert.Equal(5, curve.SnapshotTailInto(xs, ys, 5));
+        Assert.Equal([96.0, 97, 98, 99, 100], ys);
+    }
+
+    [Fact]
     public void AutoX_IncrementsPerFrame()
     {
         var plots = new PlotService();
