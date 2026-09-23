@@ -22,14 +22,22 @@ public partial class VcomManagerWindow : Window
     private void Reload()
     {
         TbDriver.Text = _manager.DriverInstalled
-            ? $"驱动状态：已安装（{_manager.InstallDir}）"
-            : "驱动状态：未安装（点击下方“驱动下载与安装说明”）";
+            ? $"驱动已安装 · {_manager.InstallDir}"
+            : "驱动未安装（点击右侧“下载与安装说明”）";
+        DotDriver.Fill = (System.Windows.Media.Brush)FindResource(
+            _manager.DriverInstalled ? "SuccessBrush" : "DangerBrush");
         LbPairs.Items.Clear();
         if (!_manager.DriverInstalled) return;
         try
         {
             foreach (var pair in _manager.ListPairs())
-                LbPairs.Items.Add($"{pair.PortA}  ↔  {pair.PortB}    ({pair.IdA})");
+                LbPairs.Items.Add($"{pair.PortA}  ↔  {pair.PortB}    (配对 #{pair.IdA.Replace("CNCA", "")})");
+        }
+        catch (ElevationCancelledException)
+        {
+            // 用户在 UAC 弹窗点了"否"：不是错误，给出可重试提示
+            TbDriver.Text = "已取消管理员授权：端口对列表未刷新（点“刷新”重试）";
+            DotDriver.Fill = (System.Windows.Media.Brush)FindResource("WarnBrush");
         }
         catch (Exception ex)
         {
@@ -58,28 +66,30 @@ public partial class VcomManagerWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"创建失败：{ex.Message}", "FreeCom",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(ex is ElevationCancelledException ? "已取消管理员授权，未创建端口对。" : $"创建失败：{ex.Message}",
+                "FreeCom", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
     private void Remove_OnClick(object sender, RoutedEventArgs e)
     {
         if (LbPairs.SelectedItem is not string item) return;
-        // 条目格式 "COM20  ↔  COM21    (CNCA0)"
+        // 条目格式 "COM20  ↔  COM21    (配对 #3)"：取括号内数字作为配对编号
         var start = item.LastIndexOf('(');
         if (start < 0) return;
-        var id = item[(start + 1)..].TrimEnd(')').Trim();
+        var inner = item[(start + 1)..].TrimEnd(')');
+        var number = new string(inner.Where(char.IsDigit).ToArray());
+        if (number.Length == 0) return;
         try
         {
-            _manager.RemovePair(id);
+            _manager.RemovePair(number);
             Reload();
             _onPortsChanged();
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"删除失败：{ex.Message}", "FreeCom",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(ex is ElevationCancelledException ? "已取消管理员授权，未执行删除。" : $"删除失败：{ex.Message}",
+                "FreeCom", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 

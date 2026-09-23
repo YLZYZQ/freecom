@@ -66,6 +66,8 @@ public partial class MainWindow : Window
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "FreeCom", "settings.json"));
         _settings = _settingsStore.Load();
+        Theme.Apply(_settings.Theme);
+        Theme.Changed += OnThemeChanged;
 
         foreach (var name in ProtocolRegistry.Names)
             CbProtocol.Items.Add(name);
@@ -212,8 +214,9 @@ public partial class MainWindow : Window
             _transport = transport;
             _pipeline.Plots.WindowsChanged += OnPlotsChanged;
 
-            BtnOpen.Content = "关闭";
-            TbState.Text = $"状态: 已连接 {_pipeline.TransportDescription}";
+            BtnOpen.Content = "断开连接";
+            TbState.Text = $"● 已连接 {_pipeline.TransportDescription}";
+            TbState.Foreground = (System.Windows.Media.Brush)FindResource("SuccessBrush");
             TbSendHint.Text = "";
         }
         catch (Exception ex)
@@ -229,8 +232,9 @@ public partial class MainWindow : Window
         _pipeline?.DetachTransport();
         _transport?.Dispose();
         _transport = null;
-        BtnOpen.Content = "打开";
-        TbState.Text = "状态: 已断开";
+        BtnOpen.Content = "连接";
+        TbState.Text = "● 已断开";
+        TbState.Foreground = (System.Windows.Media.Brush)FindResource("TextMuted");
     }
 
     // ---------------- 发送 ----------------
@@ -304,8 +308,9 @@ public partial class MainWindow : Window
 
     // ---------------- UI 刷新（接收区：方向双色 + 视图级筛选） ----------------
 
-    private static readonly SolidColorBrush TxBrush = new(Color.FromRgb(0xF5, 0xA6, 0x23)); // 发送：橙
-    private static readonly SolidColorBrush RxBrush = new(Color.FromRgb(0x9C, 0xDC, 0xFE)); // 接收：蓝
+    // TX/RX 行颜色经主题资源解析（切换主题后新渲染的行即用新色；重建由 OnThemeChanged 触发）
+    private System.Windows.Media.Brush TxBrush => (System.Windows.Media.Brush)FindResource("TxBrush");
+    private System.Windows.Media.Brush RxBrush => (System.Windows.Media.Brush)FindResource("RxBrush");
     private const int MaxDisplayBlocks = 128;
     private const int MaxDisplayCharacters = 128 * 1024;
     private const int MaxBlockCharacters = 4096;
@@ -463,7 +468,7 @@ public partial class MainWindow : Window
     private void AddPlotTab(PlotWindow window)
     {
         var plot = new WpfPlot();
-        ApplyDarkTheme(plot.Plot);
+        ApplyPlotTheme(plot.Plot);
         ApplyXTickStyle(plot);
         var tab = new TabItem { Header = $"{window.Title}  (绘图)", Content = plot };
         MainTabs.Items.Add(tab);
@@ -704,16 +709,68 @@ public partial class MainWindow : Window
                Math.Abs(a.Bottom - b.Bottom) < eps && Math.Abs(a.Top - b.Top) < eps;
     }
 
-    private static void ApplyDarkTheme(ScottPlot.Plot plot)
+    /// <summary>按当前主题应用 ScottPlot 外观（暗/亮双主题，切换时对已开绘图页重刷）。</summary>
+    private static void ApplyPlotTheme(ScottPlot.Plot plot)
     {
-        plot.FigureBackground.Color = ScottPlot.Color.FromHex("#14171C");
-        plot.DataBackground.Color = ScottPlot.Color.FromHex("#101317");
-        plot.Axes.Color(ScottPlot.Color.FromHex("#9AB0C0"));
-        plot.Grid.MajorLineColor = ScottPlot.Color.FromHex("#1F2933");
-        plot.Legend.BackgroundColor = ScottPlot.Color.FromHex("#1A1E24");
-        plot.Legend.FontColor = ScottPlot.Color.FromHex("#D6E2EE");
+        if (Theme.IsDark)
+        {
+            plot.FigureBackground.Color = ScottPlot.Color.FromHex("#14171C");
+            plot.DataBackground.Color = ScottPlot.Color.FromHex("#101317");
+            plot.Axes.Color(ScottPlot.Color.FromHex("#9AB0C0"));
+            plot.Grid.MajorLineColor = ScottPlot.Color.FromHex("#1F2933");
+            plot.Legend.BackgroundColor = ScottPlot.Color.FromHex("#1A1E24");
+            plot.Legend.FontColor = ScottPlot.Color.FromHex("#D6E2EE");
+        }
+        else
+        {
+            plot.FigureBackground.Color = ScottPlot.Color.FromHex("#F5F7FA");
+            plot.DataBackground.Color = ScottPlot.Color.FromHex("#FFFFFF");
+            plot.Axes.Color(ScottPlot.Color.FromHex("#6B7A8D"));
+            plot.Grid.MajorLineColor = ScottPlot.Color.FromHex("#E4E8EE");
+            plot.Legend.BackgroundColor = ScottPlot.Color.FromHex("#FFFFFF");
+            plot.Legend.FontColor = ScottPlot.Color.FromHex("#1F2733");
+        }
         plot.XLabel("points");
         plot.YLabel("value");
+    }
+
+    // ---------------- 主题 ----------------
+
+    private void ThemeToggle_OnMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        var target = Theme.IsDark ? Theme.Light : Theme.Dark;
+        Theme.Apply(target);
+    }
+
+    private void UpdateThemePill()
+    {
+        bool dark = Theme.IsDark;
+        PillDark.Background = dark ? (System.Windows.Media.Brush)FindResource("AccentSoftBrush") : System.Windows.Media.Brushes.Transparent;
+        PillLight.Background = !dark ? (System.Windows.Media.Brush)FindResource("AccentSoftBrush") : System.Windows.Media.Brushes.Transparent;
+        TbThemeDark.Foreground = dark
+            ? (System.Windows.Media.Brush)FindResource("AccentBrush")
+            : (System.Windows.Media.Brush)FindResource("TextSecondary");
+        TbThemeLight.Foreground = !dark
+            ? (System.Windows.Media.Brush)FindResource("AccentBrush")
+            : (System.Windows.Media.Brush)FindResource("TextSecondary");
+    }
+
+    private void OnThemeChanged()
+    {
+        _settings.Theme = Theme.Current;
+        try { _settingsStore.Save(_settings); } catch { /* 保存失败不影响换肤 */ }
+        UpdateThemePill();
+
+        // 已开绘图页换肤 + 强制重渲染
+        foreach (var st in _plotTabs.Values)
+        {
+            ApplyPlotTheme(st.Plot.Plot);
+            st.Version = long.MinValue;
+        }
+
+        // 接收区按新配色重建（TxBrush/RxBrush 随主题取色）
+        ResetDisplayDocument();
+        _displaySignature = "";
     }
 
     /// <summary>X 轴刻度样式：索引型协议（X=帧序号）只显示整数刻度；
@@ -847,6 +904,21 @@ public partial class MainWindow : Window
         McpInfo.Header = on
             ? $"MCP：http://127.0.0.1:17340  Token: {_settings.McpToken}"
             : "MCP 状态：未启用";
+        BtnMcp.Content = on ? "🤖 MCP AI 自动化 · 已启用" : "🤖 MCP AI 自动化 · 未启用";
+        BtnMcp.Foreground = on
+            ? (System.Windows.Media.Brush)FindResource("AccentBrush")
+            : (System.Windows.Media.Brush)FindResource("TextSecondary");
+        TbMcpBadge.Text = on ? "MCP 已启用" : "MCP 未启用";
+        TbMcpBadge.Foreground = on
+            ? (System.Windows.Media.Brush)FindResource("AccentBrush")
+            : (System.Windows.Media.Brush)FindResource("TextSecondary");
+    }
+
+    /// <summary>侧栏 MCP 入口：切换启停（复用菜单项 McpToggle 的点击逻辑）。</summary>
+    private void McpSidebar_OnClick(object sender, RoutedEventArgs e)
+    {
+        McpToggle.IsChecked = McpToggle.IsChecked != true;
+        McpToggle.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
     }
 
     private void McpInfo_OnClick(object sender, RoutedEventArgs e)
@@ -893,9 +965,19 @@ public partial class MainWindow : Window
         _helpWindow.Show();
     }
 
+    /// <summary>侧栏"数据导出"下拉菜单。</summary>
+    private void ExportMenu_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.ContextMenu is { } menu)
+        {
+            menu.PlacementTarget = btn;
+            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            menu.IsOpen = true;
+        }
+    }
+
     private void About_OnClick(object sender, RoutedEventArgs e)
-        => MessageBox.Show("FreeCom 免费串口调试助手 v0.1\n全功能免费 · 无账户 · 无授权\n\nMVP：串口/虚拟回环 + 5 协议绘图 + MCP AI 自动化",
-            "关于", MessageBoxButton.OK, MessageBoxImage.Information);
+        => new AboutWindow { Owner = this }.ShowDialog();
 
     private void Exit_OnClick(object sender, RoutedEventArgs e) => Close();
 

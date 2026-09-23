@@ -58,6 +58,12 @@ public static class ElevatedRunner
 /// <summary>一对虚拟串口。</summary>
 public sealed record VirtualComPair(string IdA, string IdB, string PortA, string PortB);
 
+/// <summary>用户在 UAC 弹窗取消了提权（Win32 1223）：调用方应以友好提示替代错误框。</summary>
+public sealed class ElevationCancelledException : InvalidOperationException
+{
+    public ElevationCancelledException() : base("已取消管理员授权（UAC）") { }
+}
+
 /// <summary>
 /// com0com 虚拟串口管理（PRD v0.1.1）：
 /// 检测驱动、列出/创建/删除端口对。全部操作经 setupc.exe（需管理员）。
@@ -139,6 +145,7 @@ public sealed class VirtualComManager
         var outPath = Path.Combine(Path.GetTempPath(), "FreeCom-setupc-out.txt");
         try { File.Delete(outPath); } catch { }
         var (code, output) = ElevatedRunner.RunScript(script);
+        if (code == 1223) throw new ElevationCancelledException(); // 用户在 UAC 弹窗点了"否"
         if (code != 0) throw new InvalidOperationException($"setupc 提权执行失败（code={code}）: {output}");
         var fileOutput = File.Exists(outPath) ? File.ReadAllText(outPath) : output;
 
@@ -156,11 +163,37 @@ public sealed class VirtualComManager
         return fileOutput;
     }
 
-    /// <summary>列出当前端口对（提权）。</summary>
+    /// <summary>列出当前端口对：只读查询优先免提权直接执行（不弹 UAC），失败再走提权。</summary>
     public List<VirtualComPair> ListPairs()
     {
-        var output = RunSetupc("list");
-        return ParseListOutput(output);
+        var direct = TryRunSetupcDirect("list");
+        if (direct is not null) return ParseListOutput(direct);
+        return ParseListOutput(RunSetupc("list"));
+    }
+
+    /// <summary>免提权直接运行 setupc（只用于查询类命令）；启动失败/超时/非零退出返回 null。</summary>
+    private string? TryRunSetupcDirect(params string[] args)
+    {
+        try
+        {
+            if (!DriverInstalled) return null;
+            var psi = new ProcessStartInfo
+            {
+                FileName = Path.Combine(InstallDir, "setupc.exe"),
+                Arguments = string.Join(" ", args),
+                WorkingDirectory = InstallDir,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            using var p = Process.Start(psi);
+            if (p is null) return null;
+            var output = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
+            if (!p.WaitForExit(10_000) || p.ExitCode != 0) return null;
+            return output;
+        }
+        catch { return null; }
     }
 
     /// <summary>创建端口对（提权）。返回 setupc 原始输出。</summary>

@@ -1,186 +1,312 @@
 <Window x:Class="FreeCom.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:sp="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
-        Title="FreeCom 免费串口调试助手 v0.1" Height="720" Width="1180"
+        Title="FreeCom 免费串口调试助手 v0.2" Height="760" Width="1240"
         WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource WindowBrush}"
         Closing="MainWindow_OnClosing">
-    <DockPanel>
-        <!-- 顶部：连接工具栏 -->
-        <DockPanel DockPanel.Dock="Top" Background="#FF20252B">
-            <Menu DockPanel.Dock="Top" Background="Transparent" FontSize="13">
-                <MenuItem Header="文件(_F)" Foreground="#FFE8E8E8">
-                    <MenuItem Header="导出原始数据(.dat)..." Foreground="Black" Click="ExportRaw_OnClick"/>
-                    <MenuItem Header="导出显示数据(.txt)..." Foreground="Black" Click="ExportDisplay_OnClick"/>
-                    <MenuItem Header="导出曲线数据(.csv)..." Foreground="Black" Click="ExportCurves_OnClick"/>
+    <Window.Resources>
+        <!-- 绘图页签：选中=面板底 + 强调下划线 -->
+        <Style x:Key="PlotTabItem" TargetType="TabItem">
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="Bd" Background="Transparent"
+                                BorderBrush="Transparent" BorderThickness="0,0,0,2"
+                                Padding="12,6" Margin="0,0,2,0">
+                            <ContentPresenter ContentSource="Header" RecognizesAccessKey="True"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource PanelBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/> <!-- 菜单栏 + 主题开关 -->
+            <RowDefinition Height="*"/>    <!-- 主体：左栏 + 主区 -->
+            <RowDefinition Height="Auto"/> <!-- 状态栏 -->
+        </Grid.RowDefinitions>
+
+        <!-- ================= 顶部：菜单栏 + 主题开关 ================= -->
+        <DockPanel Grid.Row="0" Background="{DynamicResource TitleBarBrush}">
+            <Menu DockPanel.Dock="Left" Margin="12,6,0,6">
+                <MenuItem Header="文件(_F)">
+                    <MenuItem Header="导出原始数据(.dat)..." Click="ExportRaw_OnClick"/>
+                    <MenuItem Header="导出显示数据(.txt)..." Click="ExportDisplay_OnClick"/>
+                    <MenuItem Header="导出曲线数据(.csv)..." Click="ExportCurves_OnClick"/>
                     <Separator/>
-                    <MenuItem Header="退出" Foreground="Black" Click="Exit_OnClick"/>
+                    <MenuItem Header="退出" Click="Exit_OnClick"/>
                 </MenuItem>
-                <MenuItem Header="工具(_T)" Foreground="#FFE8E8E8">
-                    <MenuItem x:Name="McpToggle" Header="启用 MCP 服务（本地 Control API）" Foreground="Black" IsCheckable="True" Click="McpToggle_OnClick"/>
-                    <MenuItem x:Name="McpInfo" Header="MCP 状态：未启用" Foreground="Black" IsEnabled="False" Click="McpInfo_OnClick"/>
+                <MenuItem Header="工具(_T)">
+                    <MenuItem x:Name="McpToggle" Header="启用 MCP 服务（本地 Control API）" IsCheckable="True" Click="McpToggle_OnClick"/>
+                    <MenuItem x:Name="McpInfo" Header="MCP 状态：未启用" IsEnabled="False" Click="McpInfo_OnClick"/>
                     <Separator/>
-                    <MenuItem Header="虚拟串口管理器..." Foreground="Black" Click="VcomManager_OnClick"/>
-                    <MenuItem Header="设备模拟器..." Foreground="Black" Click="DeviceSimulator_OnClick"/>
+                    <MenuItem Header="虚拟串口管理器..." Click="VcomManager_OnClick"/>
+                    <MenuItem Header="设备模拟器..." Click="DeviceSimulator_OnClick"/>
                 </MenuItem>
-                <MenuItem Header="帮助(_H)" Foreground="#FFE8E8E8">
-                    <MenuItem Header="协议格式说明" Foreground="Black" Click="ProtocolHelp_OnClick"/>
-                    <MenuItem Header="关于 FreeCom" Foreground="Black" Click="About_OnClick"/>
+                <MenuItem Header="帮助(_H)">
+                    <MenuItem Header="协议格式说明" Click="ProtocolHelp_OnClick"/>
+                    <MenuItem Header="关于 FreeCom" Click="About_OnClick"/>
                 </MenuItem>
             </Menu>
-            <WrapPanel Orientation="Horizontal" Margin="8,6">
-                <TextBlock Text="串口:" Foreground="#FFE8E8E8" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                <ComboBox x:Name="CbPort" Width="110" IsEditable="True" Foreground="Black"/>
-                <Button Content="刷新" Width="44" Margin="4,0,0,0" Click="RefreshPorts_OnClick"/>
-                <TextBlock Text="波特率:" Foreground="#FFE8E8E8" VerticalAlignment="Center" Margin="10,0,4,0"/>
-                <ComboBox x:Name="CbBaud" Width="84" IsEditable="True" Text="115200" Foreground="Black">
-                    <ComboBoxItem Content="9600"/>
-                    <ComboBoxItem Content="19200"/>
-                    <ComboBoxItem Content="38400"/>
-                    <ComboBoxItem Content="57600"/>
-                    <ComboBoxItem Content="115200"/>
-                    <ComboBoxItem Content="230400"/>
-                    <ComboBoxItem Content="460800"/>
-                    <ComboBoxItem Content="921600"/>
-                </ComboBox>
-                <TextBlock Text="数据位:" Foreground="#FFE8E8E8" VerticalAlignment="Center" Margin="10,0,4,0"/>
-                <ComboBox x:Name="CbDataBits" Width="52" Foreground="Black">
-                    <ComboBoxItem Content="5"/><ComboBoxItem Content="6"/><ComboBoxItem Content="7"/>
-                    <ComboBoxItem Content="8" IsSelected="True"/>
-                </ComboBox>
-                <TextBlock Text="停止位:" Foreground="#FFE8E8E8" VerticalAlignment="Center" Margin="10,0,4,0"/>
-                <ComboBox x:Name="CbStopBits" Width="52" Foreground="Black">
-                    <ComboBoxItem Content="1" IsSelected="True"/>
-                    <ComboBoxItem Content="1.5"/>
-                    <ComboBoxItem Content="2"/>
-                </ComboBox>
-                <TextBlock Text="校验:" Foreground="#FFE8E8E8" VerticalAlignment="Center" Margin="10,0,4,0"/>
-                <ComboBox x:Name="CbParity" Width="56" Foreground="Black">
-                    <ComboBoxItem Content="无" IsSelected="True"/>
-                    <ComboBoxItem Content="奇"/>
-                    <ComboBoxItem Content="偶"/>
-                </ComboBox>
-                <TextBlock Text="流控:" Foreground="#FFE8E8E8" VerticalAlignment="Center" Margin="10,0,4,0"/>
-                <ComboBox x:Name="CbFlow" Width="70" Foreground="Black">
-                    <ComboBoxItem Content="无" IsSelected="True"/>
-                    <ComboBoxItem Content="硬件RTS/CTS"/>
-                    <ComboBoxItem Content="软件XON/XOFF"/>
-                </ComboBox>
-                <CheckBox x:Name="CkDtr" Content="DTR" Foreground="#FFE8E8E8" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                <CheckBox x:Name="CkRts" Content="RTS" Foreground="#FFE8E8E8" VerticalAlignment="Center" Margin="8,0,0,0"/>
-                <TextBlock Text="协议:" Foreground="#FFE8E8E8" VerticalAlignment="Center" Margin="10,0,4,0"/>
-                <ComboBox x:Name="CbProtocol" Width="100" SelectionChanged="Protocol_OnSelectionChanged"/>
-                <Button x:Name="BtnOpen" Content="打开" Width="64" Margin="10,0,0,0" FontWeight="Bold" Click="OpenClose_OnClick"/>
-                <Button Content="清空" Width="46" Margin="6,0,0,0" Click="Clear_OnClick"/>
-            </WrapPanel>
+            <!-- 主题开关 -->
+            <Border HorizontalAlignment="Right" Margin="0,6,12,6" CornerRadius="12"
+                    Background="{DynamicResource InputBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1" Cursor="Hand" MouseLeftButtonUp="ThemeToggle_OnMouseUp"
+                    ToolTip="切换 亮色 / 暗色 主题（对所有窗口生效）">
+                <StackPanel Orientation="Horizontal" Height="24">
+                    <Border x:Name="PillDark" Width="66" CornerRadius="11,0,0,11" Background="Transparent">
+                        <TextBlock x:Name="TbThemeDark" Text="🌙 暗色" FontSize="11" HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}"/>
+                    </Border>
+                    <Border x:Name="PillLight" Width="66" CornerRadius="0,11,11,0" Background="Transparent">
+                        <TextBlock x:Name="TbThemeLight" Text="☀ 亮色" FontSize="11" HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
+                    </Border>
+                </StackPanel>
+            </Border>
         </DockPanel>
 
-        <!-- 底部：发送区 -->
-        <DockPanel DockPanel.Dock="Bottom" Background="#FF262B33">
-            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="8,6,8,2">
-                <RadioButton x:Name="RbText" Content="文本发送" IsChecked="True" Foreground="#FFE8E8E8" GroupName="fmt"/>
-                <RadioButton x:Name="RbHex" Content="HEX发送" Foreground="#FFE8E8E8" GroupName="fmt" Margin="12,0,0,0"/>
-                <TextBlock Text="编码:" Foreground="#FFE8E8E8" VerticalAlignment="Center" Margin="16,0,4,0"/>
-                <ComboBox x:Name="CbEncoding" Width="80">
-                    <ComboBoxItem Content="utf-8" IsSelected="True"/>
-                    <ComboBoxItem Content="gbk"/>
-                    <ComboBoxItem Content="ascii"/>
-                </ComboBox>
-                <TextBlock Text="追加换行:" Foreground="#FFE8E8E8" VerticalAlignment="Center" Margin="12,0,4,0"/>
-                <ComboBox x:Name="CbNewline" Width="70">
-                    <ComboBoxItem Content="无" IsSelected="True"/>
-                    <ComboBoxItem Content="\r\n"/>
-                    <ComboBoxItem Content="\n"/>
-                    <ComboBoxItem Content="\r"/>
-                </ComboBox>
-                <CheckBox x:Name="CkCyclic" Content="循环发送" Foreground="#FFE8E8E8" VerticalAlignment="Center" Margin="16,0,4,0"/>
-                <TextBlock Text="间隔(ms):" Foreground="#FFE8E8E8" VerticalAlignment="Center" Margin="4,0,4,0"/>
-                <TextBox x:Name="TbInterval" Width="60" Text="1000" Style="{StaticResource Mono}"/>
-                <TextBlock x:Name="TbSendHint" Foreground="#FFFF7A50" VerticalAlignment="Center" Margin="12,0,0,0"/>
-            </StackPanel>
-            <Grid Margin="8,2,8,8">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="170"/>
-                </Grid.ColumnDefinitions>
-                <TextBox x:Name="TbSend" Grid.Column="0" Height="52" TextWrapping="Wrap"
-                         Style="{StaticResource Mono}" VerticalScrollBarVisibility="Auto"
-                         KeyDown="TbSend_OnKeyDown"/>
-                <Button Grid.Column="1" x:Name="BtnSend" Content="发送" Width="74" Margin="8,0,0,0"
-                        FontWeight="Bold" Click="Send_OnClick"/>
-                <ComboBox x:Name="CbHistory" Grid.Column="2" Margin="8,0,0,0" Foreground="Black"
-                          SelectionChanged="History_OnSelectionChanged"/>
-            </Grid>
-        </DockPanel>
+        <!-- ================= 主体 ================= -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="260"/> <!-- 左侧配置栏 -->
+                <ColumnDefinition Width="*"/>   <!-- 主工作区 -->
+            </Grid.ColumnDefinitions>
 
-        <!-- 状态栏 -->
-        <Border DockPanel.Dock="Bottom" Background="#FF1A1E24" Padding="8,3">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock x:Name="TbState" Text="状态: 已断开" Foreground="#FFE8E8E8" FontFamily="Consolas"/>
-                <TextBlock x:Name="TbCounters" Text="RX: 0 B   TX: 0 B   速率: 0 B/s   解析: 0 帧   错误: 0"
-                           Foreground="#FF9AB0C0" FontFamily="Consolas" Margin="20,0,0,0"/>
-            </StackPanel>
-        </Border>
+            <!-- ============ 左侧配置栏 ============ -->
+            <Border Grid.Column="0" Background="{DynamicResource PanelBrush}"
+                    BorderBrush="{DynamicResource SeparatorBrush}" BorderThickness="0,0,1,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="18,14,18,16">
 
-        <!-- 中部：选项卡（接收区 + 动态绘图窗口），整条深色 -->
-        <Border Background="#FF0D0F12">
-            <TabControl x:Name="MainTabs" Background="Transparent" BorderThickness="0">
-                <TabControl.Resources>
-                    <Style TargetType="TabItem">
-                        <Setter Property="Foreground" Value="#FFD6E2EE"/>
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="TabItem">
-                                    <Border x:Name="Bd" Background="Transparent"
-                                            BorderBrush="Transparent" BorderThickness="0,0,0,2"
-                                            Padding="12,5" Margin="0,0,2,0">
-                                        <ContentPresenter ContentSource="Header" RecognizesAccessKey="True"
-                                                          VerticalAlignment="Center"/>
-                                    </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsSelected" Value="True">
-                                            <Setter TargetName="Bd" Property="BorderBrush" Value="#FF00B0F0"/>
-                                            <Setter TargetName="Bd" Property="Background" Value="#FF14171C"/>
-                                        </Trigger>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="Bd" Property="BorderBrush" Value="#FF3A4A5A"/>
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-                </TabControl.Resources>
-                <TabItem>
-                    <TabItem.Header>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="接收区" FontWeight="Bold" VerticalAlignment="Center"/>
-                            <CheckBox x:Name="CkAutoScroll" Content="自动滚动" IsChecked="True"
-                                      Foreground="#FFD6E2EE" Margin="14,0,0,0" VerticalAlignment="Center"/>
-                            <CheckBox x:Name="CkTimestamp" Content="时间戳" IsChecked="True"
-                                      Foreground="#FFD6E2EE" Margin="12,0,0,0" VerticalAlignment="Center"/>
-                            <CheckBox x:Name="CkHexView" Content="HEX显示"
-                                      Foreground="#FFD6E2EE" Margin="12,0,0,0" VerticalAlignment="Center"/>
-                            <Button Content="清空接收区" Width="80" Margin="12,0,0,0" Click="ClearDisplay_OnClick"/>
-                            <TextBlock Text="筛选:" Foreground="#FFD6E2EE" VerticalAlignment="Center" Margin="16,0,4,0"/>
-                            <ComboBox x:Name="CbFilterDir" Width="72" Foreground="Black">
-                                <ComboBoxItem Content="全部" IsSelected="True"/>
-                                <ComboBoxItem Content="仅接收"/>
-                                <ComboBoxItem Content="仅发送"/>
+                        <TextBlock Style="{StaticResource SectionLabel}" Text="连 接"/>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="串口"/>
+                                <ComboBox x:Name="CbPort" IsEditable="True" Style="{StaticResource Mono}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Bottom">
+                                <Button x:Name="BtnRefresh" Content="⟳" Width="32" Height="28" FontSize="13"
+                                        Click="RefreshPorts_OnClick" ToolTip="刷新端口列表"/>
+                            </StackPanel>
+                        </Grid>
+                        <StackPanel Margin="0,0,0,10">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="波特率"/>
+                            <ComboBox x:Name="CbBaud" IsEditable="True" Text="115200" Style="{StaticResource Mono}">
+                                <ComboBoxItem Content="9600"/>
+                                <ComboBoxItem Content="19200"/>
+                                <ComboBoxItem Content="38400"/>
+                                <ComboBoxItem Content="57600"/>
+                                <ComboBoxItem Content="115200"/>
+                                <ComboBoxItem Content="230400"/>
+                                <ComboBoxItem Content="460800"/>
+                                <ComboBoxItem Content="921600"/>
                             </ComboBox>
-                            <TextBlock Text="包含:" Foreground="#FFD6E2EE" VerticalAlignment="Center" Margin="8,0,4,0"/>
-                            <TextBox x:Name="TbFilterText" Width="110" FontFamily="Consolas"
-                                     ToolTip="只显示包含该关键字的行（区分方向按左侧筛选）"/>
                         </StackPanel>
-                    </TabItem.Header>
-                    <RichTextBox x:Name="TbReceive" IsReadOnly="True" Background="#FF101317"
-                                 Foreground="#FFD6E2EE" FontFamily="Consolas, Courier New" FontSize="12.5"
-                                 VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
-                                 BorderThickness="0" IsUndoEnabled="False"
-                                 ToolTip="实时视图最多保留128K字符；高速接收时显示最新数据。显示日志缓存8MiB，原始日志缓存32MiB，可通过文件菜单导出。"/>
-                </TabItem>
-            </TabControl>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="数据位"/>
+                                <ComboBox x:Name="CbDataBits" Style="{StaticResource Mono}">
+                                    <ComboBoxItem Content="5"/><ComboBoxItem Content="6"/><ComboBoxItem Content="7"/>
+                                    <ComboBoxItem Content="8" IsSelected="True"/>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="停止位"/>
+                                <ComboBox x:Name="CbStopBits" Style="{StaticResource Mono}">
+                                    <ComboBoxItem Content="1" IsSelected="True"/>
+                                    <ComboBoxItem Content="1.5"/>
+                                    <ComboBoxItem Content="2"/>
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="校验"/>
+                                <ComboBox x:Name="CbParity">
+                                    <ComboBoxItem Content="无" IsSelected="True"/>
+                                    <ComboBoxItem Content="奇"/>
+                                    <ComboBoxItem Content="偶"/>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="流控"/>
+                                <ComboBox x:Name="CbFlow">
+                                    <ComboBoxItem Content="无" IsSelected="True"/>
+                                    <ComboBoxItem Content="硬件RTS/CTS"/>
+                                    <ComboBoxItem Content="软件XON/XOFF"/>
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <CheckBox x:Name="CkDtr" Content="DTR" Style="{StaticResource PillCheckBox}" Margin="0,0,8,0"/>
+                            <CheckBox x:Name="CkRts" Content="RTS" Style="{StaticResource PillCheckBox}"/>
+                        </StackPanel>
+
+                        <TextBlock Style="{StaticResource SectionLabel}" Text="协 议"/>
+                        <StackPanel Margin="0,0,0,6">
+                            <ComboBox x:Name="CbProtocol" SelectionChanged="Protocol_OnSelectionChanged"/>
+                        </StackPanel>
+                        <Button Style="{StaticResource LinkButton}" Content="⟱ 协议格式说明"
+                                HorizontalAlignment="Left" Margin="0,0,0,14" Click="ProtocolHelp_OnClick"/>
+
+                        <!-- 连接主按钮 + 状态 -->
+                        <Button x:Name="BtnOpen" Content="连接" Height="38" FontSize="14"
+                                Style="{StaticResource PrimaryButton}" Click="OpenClose_OnClick" Margin="0,0,0,8"/>
+                        <TextBlock x:Name="TbState" Text="● 已断开" FontFamily="Consolas" FontSize="11"
+                                   Foreground="{DynamicResource TextMuted}" Margin="2,0,0,12"/>
+
+                        <Separator Margin="0,0,0,10"/>
+                        <TextBlock Style="{StaticResource SectionLabel}" Text="工 具"/>
+                        <StackPanel>
+                            <Button Style="{StaticResource LinkButton}" Content="⎋ 虚拟串口管理器" Click="VcomManager_OnClick" Margin="0,0,0,2"/>
+                            <Button Style="{StaticResource LinkButton}" Content="⚙ 设备模拟器" Click="DeviceSimulator_OnClick" Margin="0,0,0,2"/>
+                            <Button x:Name="BtnExport" Style="{StaticResource LinkButton}" Content="⤓ 数据导出 ▾" Click="ExportMenu_OnClick" Margin="0,0,0,2"
+                                    ContextMenuService.Placement="Bottom">
+                                <Button.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="原始数据 (.dat)" Click="ExportRaw_OnClick"/>
+                                        <MenuItem Header="显示数据 (.txt)" Click="ExportDisplay_OnClick"/>
+                                        <MenuItem Header="曲线数据 (.csv)" Click="ExportCurves_OnClick"/>
+                                    </ContextMenu>
+                                </Button.ContextMenu>
+                            </Button>
+                            <Button x:Name="BtnMcp" Style="{StaticResource LinkButton}" Content="🤖 MCP AI 自动化 · 未启用"
+                                    Click="McpSidebar_OnClick" Margin="0,0,0,2"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <!-- ============ 主工作区 ============ -->
+            <DockPanel Grid.Column="1">
+                <!-- 发送区 -->
+                <Border DockPanel.Dock="Bottom" Background="{DynamicResource PanelBrush}"
+                        BorderBrush="{DynamicResource SeparatorBrush}" BorderThickness="0,1,0,0">
+                    <StackPanel Margin="16,10,16,12">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <RadioButton x:Name="RbText" Content="文本" Style="{StaticResource SegmentItem}" GroupName="fmt" IsChecked="True"/>
+                            <RadioButton x:Name="RbHex" Content="HEX" Style="{StaticResource SegmentItem}" GroupName="fmt" Margin="6,0,0,0"/>
+                            <TextBlock Text="编码" FontSize="11" Foreground="{DynamicResource TextSecondary}"
+                                       VerticalAlignment="Center" Margin="18,0,6,0"/>
+                            <ComboBox x:Name="CbEncoding" Width="78" FontSize="11">
+                                <ComboBoxItem Content="utf-8" IsSelected="True"/>
+                                <ComboBoxItem Content="gbk"/>
+                                <ComboBoxItem Content="ascii"/>
+                            </ComboBox>
+                            <TextBlock Text="追加换行" FontSize="11" Foreground="{DynamicResource TextSecondary}"
+                                       VerticalAlignment="Center" Margin="12,0,6,0"/>
+                            <ComboBox x:Name="CbNewline" Width="70" FontSize="11">
+                                <ComboBoxItem Content="无" IsSelected="True"/>
+                                <ComboBoxItem Content="\r\n"/>
+                                <ComboBoxItem Content="\n"/>
+                                <ComboBoxItem Content="\r"/>
+                            </ComboBox>
+                            <CheckBox x:Name="CkCyclic" Content="循环发送" Style="{StaticResource PillCheckBox}" Margin="16,0,0,0"/>
+                            <TextBlock Text="间隔(ms)" FontSize="11" Foreground="{DynamicResource TextSecondary}"
+                                       VerticalAlignment="Center" Margin="10,0,6,0"/>
+                            <TextBox x:Name="TbInterval" Width="58" Text="1000" Style="{StaticResource Mono}"/>
+                            <TextBlock x:Name="TbSendHint" Foreground="{DynamicResource WarnBrush}" FontSize="11"
+                                       VerticalAlignment="Center" Margin="14,0,0,0"/>
+                        </StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="150"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="TbSend" Grid.Column="0" Height="52" TextWrapping="Wrap" FontSize="12.5"
+                                     Style="{StaticResource Mono}" VerticalScrollBarVisibility="Auto"
+                                     KeyDown="TbSend_OnKeyDown"
+                                     ToolTip="Ctrl+Enter 快速发送"/>
+                            <Button Grid.Column="1" x:Name="BtnSend" Content="发送" Width="84" Height="52" Margin="10,0,0,0"
+                                    FontSize="14" Style="{StaticResource PrimaryButton}" Click="Send_OnClick"/>
+                            <ComboBox x:Name="CbHistory" Grid.Column="2" Margin="10,0,0,0"
+                                      SelectionChanged="History_OnSelectionChanged" ToolTip="发送历史（最近 20 条）"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 中部：选项卡（接收区 + 动态绘图窗口） -->
+                <Border Background="{DynamicResource WindowBrush}">
+                    <TabControl x:Name="MainTabs" Background="Transparent" BorderThickness="0">
+                        <TabControl.Resources>
+                            <Style TargetType="TabItem" BasedOn="{StaticResource PlotTabItem}"/>
+                        </TabControl.Resources>
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="▤ 接收区" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <CheckBox x:Name="CkAutoScroll" Content="自动滚动" Style="{StaticResource PillCheckBox}"
+                                              IsChecked="True" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                                    <CheckBox x:Name="CkTimestamp" Content="时间戳" Style="{StaticResource PillCheckBox}"
+                                              IsChecked="True" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                    <CheckBox x:Name="CkHexView" Content="HEX" Style="{StaticResource PillCheckBox}"
+                                              Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                    <Button Content="清空" Width="52" Height="24" Margin="12,0,0,0"
+                                            FontSize="11" Click="ClearDisplay_OnClick" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="CbFilterDir" Width="66" Height="24" FontSize="11" Margin="12,0,0,0"
+                                              VerticalAlignment="Center">
+                                        <ComboBoxItem Content="全部" IsSelected="True"/>
+                                        <ComboBoxItem Content="仅接收"/>
+                                        <ComboBoxItem Content="仅发送"/>
+                                    </ComboBox>
+                                    <TextBox x:Name="TbFilterText" Width="140" Height="24" FontSize="11" Margin="8,0,0,0"
+                                             VerticalAlignment="Center" FontFamily="Consolas"
+                                             ToolTip="只显示包含该关键字的行（方向按左侧筛选）"/>
+                                </StackPanel>
+                            </TabItem.Header>
+                            <RichTextBox x:Name="TbReceive" IsReadOnly="True"
+                                         Background="{DynamicResource CodeBrush}"
+                                         Foreground="{DynamicResource CodeTextBrush}"
+                                         FontFamily="Consolas, Courier New" FontSize="12.5"
+                                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                         BorderThickness="0" IsUndoEnabled="False"
+                                         ToolTip="实时视图最多保留128K字符；高速接收时显示最新数据。显示日志缓存8MiB，原始日志缓存32MiB，可通过文件菜单导出。"/>
+                        </TabItem>
+                    </TabControl>
+                </Border>
+            </DockPanel>
+        </Grid>
+
+        <!-- ================= 状态栏 ================= -->
+        <Border Grid.Row="2" Background="{DynamicResource StatusBrush}"
+                BorderBrush="{DynamicResource SeparatorBrush}" BorderThickness="0,1,0,0" Padding="16,5">
+            <DockPanel>
+                <Border DockPanel.Dock="Right" HorizontalAlignment="Right" CornerRadius="8"
+                        BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" Padding="8,1"
+                        VerticalAlignment="Center">
+                    <TextBlock x:Name="TbMcpBadge" Text="MCP 未启用" FontSize="9.5"
+                               Foreground="{DynamicResource TextSecondary}"/>
+                </Border>
+                <TextBlock x:Name="TbCounters" Text="RX: 0 B   TX: 0 B   速率: 0 B/s   解析: 0 帧   错误: 0   内存: 0MB"
+                           Foreground="{DynamicResource TextSecondary}" FontFamily="Consolas" FontSize="11.5"
+                           VerticalAlignment="Center"/>
+            </DockPanel>
         </Border>
-    </DockPanel>
+    </Grid>
 </Window>

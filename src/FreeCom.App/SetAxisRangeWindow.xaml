@@ -2,47 +2,30 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="设置坐标轴显示窗口" Width="400" SizeToContent="Height"
-        WindowStartupLocation="CenterOwner" Background="#FF20252B" ResizeMode="NoResize">
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        Background="{DynamicResource WindowBrush}">
     <Window.Resources>
-        <Style x:Key="Radio" TargetType="RadioButton">
-            <Setter Property="Foreground" Value="#FFD6E2EE"/>
+        <Style x:Key="AxisRadio" TargetType="RadioButton" BasedOn="{StaticResource {x:Type RadioButton}}">
             <Setter Property="Margin" Value="0,0,0,8"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
         <Style x:Key="SubLabel" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#FF9AB0C0"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
-        <Style x:Key="NumBox" TargetType="TextBox">
+        <Style x:Key="NumBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
             <Setter Property="Width" Value="90"/>
-            <Setter Property="FontFamily" Value="Consolas, Courier New"/>
             <Setter Property="TextAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="Height" Value="26"/>
-        </Style>
-        <Style x:Key="SectionHeader" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#FFE8E8E8"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Margin" Value="2,0,0,6"/>
-        </Style>
-        <Style x:Key="SectionCard" TargetType="Border">
-            <Setter Property="Background" Value="#FF1A1E23"/>
-            <Setter Property="BorderBrush" Value="#FF333A44"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Padding" Value="14,12,14,10"/>
-            <Setter Property="Margin" Value="0,0,0,14"/>
         </Style>
     </Window.Resources>
 
     <StackPanel Margin="18,16,18,14">
         <!-- ============ X 轴 ============ -->
-        <TextBlock Style="{StaticResource SectionHeader}" Text="X 轴（横轴）"/>
-        <Border Style="{StaticResource SectionCard}">
+        <TextBlock Style="{StaticResource SectionLabel}" Text="X 轴（横轴）"/>
+        <Border Style="{StaticResource CardBorder}">
             <StackPanel>
-                <RadioButton x:Name="RbXAuto" Style="{StaticResource Radio}" GroupName="XMode"
+                <RadioButton x:Name="RbXAuto" Style="{StaticResource AxisRadio}" GroupName="XMode"
                              Content="自动" ToolTip="跟随全部数据自动缩放"/>
-                <RadioButton x:Name="RbXWindow" Style="{StaticResource Radio}" GroupName="XMode"
+                <RadioButton x:Name="RbXWindow" Style="{StaticResource AxisRadio}" GroupName="XMode"
                              Content="滚动窗口" ToolTip="示波器式：新点从右进入，最老的点从左侧移出；数据不足时曲线从左生长"/>
                 <StackPanel x:Name="PanelXWindow" Margin="26,0,0,8">
                     <StackPanel Orientation="Horizontal">
@@ -52,7 +35,7 @@
                         <TextBlock Style="{StaticResource SubLabel}" Text="个点"/>
                     </StackPanel>
                 </StackPanel>
-                <RadioButton x:Name="RbXFixed" Style="{StaticResource Radio}" GroupName="XMode"
+                <RadioButton x:Name="RbXFixed" Style="{StaticResource AxisRadio}" GroupName="XMode"
                              Content="固定范围"/>
                 <StackPanel x:Name="PanelXFixed" Margin="26,0,0,2">
                     <StackPanel Orientation="Horizontal">
@@ -67,12 +50,12 @@
         </Border>
 
         <!-- ============ Y 轴 ============ -->
-        <TextBlock Style="{StaticResource SectionHeader}" Text="Y 轴（纵轴）"/>
-        <Border Style="{StaticResource SectionCard}">
+        <TextBlock Style="{StaticResource SectionLabel}" Text="Y 轴（纵轴）"/>
+        <Border Style="{StaticResource CardBorder}">
             <StackPanel>
-                <RadioButton x:Name="RbYAuto" Style="{StaticResource Radio}" GroupName="YMode"
+                <RadioButton x:Name="RbYAuto" Style="{StaticResource AxisRadio}" GroupName="YMode"
                              Content="自动" ToolTip="跟随数据范围自动缩放"/>
-                <RadioButton x:Name="RbYFixed" Style="{StaticResource Radio}" GroupName="YMode"
+                <RadioButton x:Name="RbYFixed" Style="{StaticResource AxisRadio}" GroupName="YMode"
                              Content="固定窗口" ToolTip="超出窗口的数据被裁剪出画面，像示波器"/>
                 <StackPanel x:Name="PanelYFixed" Margin="26,0,0,2">
                     <StackPanel Orientation="Horizontal">
@@ -87,14 +70,14 @@
         </Border>
 
         <!-- ============ 底部：提示 + 按钮 ============ -->
-        <Separator Background="#FF333A44" Height="1" Margin="0,2,0,8"/>
-        <TextBlock x:Name="TbHint" Foreground="#FFFF7A50" FontSize="12" TextWrapping="Wrap"
+        <Separator Margin="0,2,0,8"/>
+        <TextBlock x:Name="TbHint" Foreground="{DynamicResource WarnBrush}" FontSize="12" TextWrapping="Wrap"
                    Margin="2,0,0,10" MinHeight="0"/>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="应用" Width="88" Height="30" Margin="0,0,10,0" FontWeight="Bold"
-                    Background="#FF00B0F0" Foreground="#FF0D0F12" BorderThickness="0"
-                    Click="Apply_OnClick"/>
             <Button Content="取消" Width="72" Height="30" IsCancel="True"/>
+            <Button Content="应用" Width="88" Height="30" Margin="10,0,0,0" FontWeight="Bold"
+                    Style="{StaticResource PrimaryButton}"
+                    Click="Apply_OnClick"/>
         </StackPanel>
     </StackPanel>
 </Window>

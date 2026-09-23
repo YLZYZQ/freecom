@@ -51,7 +51,7 @@ public partial class DeviceSimulatorWindow : Window
         }
         catch (Exception ex)
         {
-            TbState.Text = $"状态: 打开 {name} 失败（{ex.Message}）";
+            TbState.Text = $"● 打开 {name} 失败（{ex.Message}）";
             return false;
         }
     }
@@ -62,8 +62,8 @@ public partial class DeviceSimulatorWindow : Window
         {
             _timer.Stop();
             _timer = null;
-            BtnStart.Content = "开始发送";
-            TbState.Text = "状态: 已停止";
+            BtnStart.Content = "▶ 开始发送";
+            TbState.Text = "● 已停止";
             return;
         }
         if (!EnsureOpen())
@@ -85,13 +85,13 @@ public partial class DeviceSimulatorWindow : Window
             }
             catch (Exception ex)
             {
-                TbState.Text = $"状态: 发送失败（{ex.Message}）";
-                if (_timer is not null) { _timer.Stop(); _timer = null; BtnStart.Content = "开始发送"; }
+                TbState.Text = $"● 发送失败（{ex.Message}）";
+                if (_timer is not null) { _timer.Stop(); _timer = null; BtnStart.Content = "▶ 开始发送"; }
             }
         };
         _timer.Start();
-        BtnStart.Content = "停止";
-        TbState.Text = $"状态: 每 {interval}ms 发送 {protocol} → {_port!.PortName}";
+        BtnStart.Content = "■ 停止发送";
+        TbState.Text = $"● 发送中 · 每 {interval}ms {protocol} → {_port!.PortName}";
     }
 
     private void Manual_OnClick(object sender, RoutedEventArgs e)
@@ -111,7 +111,7 @@ public partial class DeviceSimulatorWindow : Window
         }
         catch (Exception ex)
         {
-            TbState.Text = $"状态: 发送失败（{ex.Message}）";
+            TbState.Text = $"● 发送失败（{ex.Message}）";
         }
     }
 

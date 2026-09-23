@@ -34,6 +34,9 @@ public sealed class AppSettings
     public int CyclicIntervalMs { get; set; } = 1000;
 
     public string? McpToken { get; set; }
+
+    /// <summary>界面主题：dark / light（v0.2 双主题）。缺省 dark，旧配置无此字段自动回落。</summary>
+    public string Theme { get; set; } = "dark";
 }
 
 /// <summary>配置存取：JSON 文件、原子写入、坏文件降级为默认值并备份。</summary>
