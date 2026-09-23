@@ -212,6 +212,52 @@ public sealed class McpServer
                     return await PostAsync("/v1/export/curves", Body(args));
                 case "app_info":
                     return await GetAsync("/v1/app/info");
+                case "receive_wait":
+                    return await PostAsync("/v1/device/wait", Body(args));
+                case "send_expect":
+                    return await PostAsync("/v1/device/expect", Body(args));
+                case "send_history":
+                {
+                    var limit = args.ValueKind is JsonValueKind.Object && args.TryGetProperty("limit", out var lv)
+                        ? lv.ToString() : "20";
+                    return await GetAsync($"/v1/device/send-history?limit={limit}");
+                }
+                case "protocol_help":
+                {
+                    var q = args.ValueKind is JsonValueKind.Object && args.TryGetProperty("name", out var nv)
+                        && nv.ValueKind == JsonValueKind.String ? "?name=" + Uri.EscapeDataString(nv.GetString()!) : "";
+                    return await GetAsync("/v1/protocol/help" + q);
+                }
+                case "curve_stats":
+                {
+                    if (args.ValueKind is not JsonValueKind.Object ||
+                        !args.TryGetProperty("id", out var idv2) || idv2.ValueKind != JsonValueKind.String)
+                        return (false, "缺少参数 id（窗口 id 或 title）");
+                    return await GetAsync($"/v1/plot/windows/{Uri.EscapeDataString(idv2.GetString()!)}/stats");
+                }
+                case "export_raw":
+                {
+                    if (args.ValueKind is not JsonValueKind.Object ||
+                        !args.TryGetProperty("path", out var pv) || pv.ValueKind != JsonValueKind.String)
+                        return (false, "缺少参数 path（导出文件完整路径）");
+                    return await PostAsync("/v1/export/raw", Body(args));
+                }
+                case "export_display":
+                    return await PostAsync("/v1/export/display", Body(args));
+                case "simulator_start":
+                    return await PostAsync("/v1/simulator/start", Body(args));
+                case "simulator_stop":
+                    return await PostAsync("/v1/simulator/stop", "{}");
+                case "vcom_list":
+                    return await GetAsync("/v1/vcom/pairs");
+                case "vcom_create":
+                    return await PostAsync("/v1/vcom/pairs", Body(args));
+                case "vcom_remove":
+                {
+                    var num = args.ValueKind is JsonValueKind.Object && args.TryGetProperty("pairNumber", out var pn)
+                        ? pn.ToString() : "0";
+                    return await DeleteAsync($"/v1/vcom/pairs/{Uri.EscapeDataString(num)}");
+                }
                 default:
                     return (false, $"未知工具: {name}");
             }
@@ -241,6 +287,7 @@ public sealed class McpServer
     private Task<(bool, string)> GetAsync(string path) => SendToolAsync("GET", path, null);
     private Task<(bool, string)> PostAsync(string path, string body) => SendToolAsync("POST", path, body);
     private Task<(bool, string)> PutAsync(string path, string body) => SendToolAsync("PUT", path, body);
+    private Task<(bool, string)> DeleteAsync(string path) => SendToolAsync("DELETE", path, null);
 
     private async Task<(bool Ok, string Text)> SendToolAsync(string method, string path, string? body)
     {

@@ -52,9 +52,11 @@ public sealed class SimulatorEngine : IDisposable
         protocol = string.IsNullOrWhiteSpace(protocol) ? "TEXT" : protocol.ToUpperInvariant();
         intervalMs = Math.Clamp(intervalMs <= 0 ? 100 : intervalMs, 10, 60_000);
 
+        // 两段式：先锁内摘除旧端口 → 锁外关闭（Close 可能等待 pending 写，不能在锁内）→ 再开新端口。
+        // 旧端口必须在新端口 Open 之前关闭，否则同端口重建会撞句柄。
+        ClosePort(StopAndDetach());
         lock (_lock)
         {
-            StopLocked();
             var port = new SerialPort(portName, 115200) { WriteTimeout = 3000 };
             try
             {
@@ -83,14 +85,25 @@ public sealed class SimulatorEngine : IDisposable
                 try
                 {
                     var frame = Protocols.TrafficFrames.FrameFor(protocol, Interlocked.Increment(ref _frameIndex));
-                    lock (_lock) port.Write(frame, 0, frame.Length);
+                    // 写必须在锁外：com0com 的写可能长期阻塞（对端不消费时 WriteTimeout 不生效），
+                    // 持锁写会让 Stop/Status 永远等锁 → 死锁（现场：EndWrite 阻塞 + 请求线程等 Monitor）。
+                    // 锁只取端口引用；并发 Close 会中断 pending 写并以异常结束本回调。
+                    SerialPort target;
+                    lock (_lock) target = _port!;
+                    if (target is null) return;
+                    target.Write(frame, 0, frame.Length);
                     Interlocked.Increment(ref _sentFrames);
                     Interlocked.Add(ref _sentBytes, frame.Length);
                 }
                 catch (Exception ex)
                 {
-                    _lastError = $"发送失败：{ex.Message}";
-                    lock (_lock) StopLocked(); // 端口故障自动停止
+                    SerialPort? p;
+                    lock (_lock)
+                    {
+                        _lastError = $"发送失败：{ex.Message}";
+                        p = StopLocked(); // 端口故障自动停止
+                    }
+                    ClosePort(p);
                 }
             }, null, 0, intervalMs);
             return Status;
@@ -99,21 +112,34 @@ public sealed class SimulatorEngine : IDisposable
 
     public SimulatorStatus Stop()
     {
-        lock (_lock) StopLocked();
+        ClosePort(StopAndDetach());
         return Status;
     }
 
-    private void StopLocked()
+    private SerialPort? StopAndDetach()
+    {
+        lock (_lock) return StopLocked();
+    }
+
+    /// <summary>锁内摘除定时器与端口引用；返回的端口由调用方在锁外关闭。</summary>
+    private SerialPort? StopLocked()
     {
         _timer?.Dispose();
         _timer = null;
-        try { if (_port is { IsOpen: true }) _port.Close(); } catch { /* 忽略关闭异常 */ }
-        _port?.Dispose();
+        var p = _port;
         _port = null;
+        return p;
+    }
+
+    private static void ClosePort(SerialPort? port)
+    {
+        if (port is null) return;
+        try { if (port.IsOpen) port.Close(); } catch { /* 忽略关闭异常 */ }
+        try { port.Dispose(); } catch { }
     }
 
     public void Dispose()
     {
-        lock (_lock) StopLocked();
+        ClosePort(StopAndDetach());
     }
 }

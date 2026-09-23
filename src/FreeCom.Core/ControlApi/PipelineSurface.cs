@@ -55,6 +55,15 @@ public sealed class PipelineSurface : IControlSurface
         var kind = string.IsNullOrWhiteSpace(request.Transport) ? "serial" : request.Transport;
         var factory = TransportRegistry.Find(kind)
             ?? throw new ArgumentException($"未知传输类型: {kind}（可用: {string.Join(", ", TransportRegistry.All.Select(f => f.Kind))}）");
+        // 参数校验先行：无效请求（如缺 port）直接 400，不破坏现有连接
+        // （此前"先关旧再开新"会让失败的 open 请求把已打开的串口连接杀掉）
+        if (string.Equals(kind, "serial", StringComparison.OrdinalIgnoreCase))
+        {
+            var p = request.Params ?? [];
+            var port = p.TryGetValue("port", out var v) ? v : null;
+            if (string.IsNullOrWhiteSpace(port))
+                throw new ArgumentException("串口参数缺少 port（可用 /v1/serial/ports 查询）");
+        }
         // 先释放旧连接再开新连接：真实串口不允许同端口被两个句柄同时占用
         lock (_transportLock)
         {

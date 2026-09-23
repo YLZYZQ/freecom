@@ -55,7 +55,7 @@ public static class McpToolCatalog
         new("vcom_create", "创建虚拟串口对（需管理员会弹 UAC；省略端口自动挑空闲号）", "POST", "/v1/vcom/pairs",
             """{"type":"object","properties":{"portA":{"type":"string"},"portB":{"type":"string"}},"required":[]}"""),
         new("vcom_remove", "删除虚拟串口对（需管理员会弹 UAC；pairNumber 见 vcom_list）", "DELETE", "/v1/vcom/pairs/{n}",
-            """{"type":"object","properties":{},"required":[]}"""),
+            """{"type":"object","properties":{"pairNumber":{"type":"integer","description":"端口对编号（vcom_list 返回的 pairNumber）"}},"required":["pairNumber"]}"""),
         new("simulator_start", "设备模拟器：以下位机身份占用端口对另一端并持续发送协议帧（无硬件自测）", "POST", "/v1/simulator/start",
             """{"type":"object","properties":{"port":{"type":"string","description":"端口对的另一端（主程序连 COM24 则填 COM25）"},"protocol":{"type":"string","default":"TEXT"},"intervalMs":{"type":"integer","default":100}},"required":["port"]}"""),
         new("simulator_stop", "停止设备模拟器", "POST", "/v1/simulator/stop",
