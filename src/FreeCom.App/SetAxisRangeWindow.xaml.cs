@@ -4,7 +4,8 @@ namespace FreeCom.App;
 
 /// <summary>坐标轴显示窗口设置（示波器式）：
 /// X：自动 / 滚动窗口（最近 N 点，新点右入、最老点左出）/ 固定范围；
-/// Y：自动 / 固定窗口（超出窗口的数据被裁剪出画面）。</summary>
+/// Y：自动 / 固定窗口（超出窗口的数据被裁剪出画面）。
+/// 子输入区随所在单选项启停（未选中的模式输入置灰）。</summary>
 public partial class SetAxisRangeWindow : Window
 {
     /// <summary>滚动窗口点数上限：与渲染缓冲一致，超过会导致窗口左侧空白。</summary>
@@ -27,6 +28,11 @@ public partial class SetAxisRangeWindow : Window
         XMin = xMin; XMax = xMax;
         YAuto = yAuto; YMin = yMin; YMax = yMax;
 
+        // 子输入区跟随单选项启停：未选中的模式置灰，当前模式可直接输入
+        WireMode(RbXWindow, PanelXWindow);
+        WireMode(RbXFixed, PanelXFixed);
+        WireMode(RbYFixed, PanelYFixed);
+
         RbXAuto.IsChecked = XAuto;
         RbXWindow.IsChecked = !XAuto && xWindowPoints > 0;
         RbXFixed.IsChecked = !XAuto && xWindowPoints == 0;
@@ -37,6 +43,18 @@ public partial class SetAxisRangeWindow : Window
         RbYFixed.IsChecked = !YAuto;
         TbYMin.Text = YMin.ToString("G6");
         TbYMax.Text = YMax.ToString("G6");
+    }
+
+    private static void WireMode(System.Windows.Controls.Primitives.ToggleButton radio, FrameworkElement panel)
+    {
+        void Apply(bool on)
+        {
+            panel.IsEnabled = on;
+            panel.Opacity = on ? 1.0 : 0.45;
+        }
+        radio.Checked += (_, _) => Apply(true);
+        radio.Unchecked += (_, _) => Apply(false);
+        Apply(radio.IsChecked == true);
     }
 
     private void Apply_OnClick(object sender, RoutedEventArgs e)
