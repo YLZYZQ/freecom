@@ -214,6 +214,13 @@ public sealed class McpServer
                     return await GetAsync("/v1/app/info");
                 case "receive_wait":
                     return await PostAsync("/v1/device/wait", Body(args));
+                case "send_file":
+                {
+                    if (args.ValueKind is not JsonValueKind.Object ||
+                        !args.TryGetProperty("path", out var fv) || fv.ValueKind != JsonValueKind.String)
+                        return (false, "缺少参数 path（文件完整路径）");
+                    return await PostAsync("/v1/device/send-file", Body(args));
+                }
                 case "send_expect":
                     return await PostAsync("/v1/device/expect", Body(args));
                 case "send_history":

@@ -203,6 +203,45 @@ public sealed class McpToolsTests : IClassFixture<ApiFixture>, IAsyncLifetime
         Assert.Contains(items, i => i.GetProperty("hex").GetString()!.Replace(" ", "") == "AA55");
     }
 
+    [Fact]
+    public async Task SendFile_StreamedToPeerAndAudited()
+    {
+        await _fx.OpenDefaultsAsync();
+        var payload = new byte[20_000]; // 跨 3 个 8KB 块
+        new Random(42).NextBytes(payload);
+        var path = Path.Combine(Path.GetTempPath(), $"freecom-file-{Guid.NewGuid():N}.bin");
+        await File.WriteAllBytesAsync(path, payload);
+
+        var resp = await _fx.PostAsync("/v1/device/send-file", $$"""{"path":"{{path.Replace("\\", "\\\\")}}"}""");
+        Assert.Equal(20_000, resp.GetProperty("sentBytes").GetInt64());
+
+        await Wait.RxAsync(_fx.Pipeline, 20_000);
+        var received = _fx.Peer!.DrainReceived();
+        Assert.Equal(payload.Length, received.Length);
+        Assert.True(payload.AsSpan().SequenceEqual(received), "文件字节应原样到达对端");
+
+        Assert.Equal(20_000, _fx.Pipeline.Counters.TxBytes);
+        var hist = _fx.Pipeline.GetSendHistory(5);
+        Assert.Contains(hist, h => h.Text.Contains("[文件]") && h.Bytes == 20_000);
+        File.Delete(path);
+    }
+
+    [Fact]
+    public async Task SendFile_MissingPath400()
+    {
+        var (status, _) = await _fx.PostExpectStatusAsync("/v1/device/send-file", "{}");
+        Assert.Equal(HttpStatusCode.BadRequest, status);
+    }
+
+    [Fact]
+    public async Task SendFile_NotFound409()
+    {
+        var (status, _) = await _fx.PostExpectStatusAsync("/v1/device/send-file",
+            """{"path":"C:\__freecom_no_such_file__.bin"}""");
+        Assert.True(status is HttpStatusCode.BadRequest or HttpStatusCode.Conflict or HttpStatusCode.InternalServerError,
+            $"实际 {status}");
+    }
+
     // ---------------- exports ----------------
 
     [Fact]
@@ -281,6 +320,6 @@ public sealed class McpToolsTests : IClassFixture<ApiFixture>, IAsyncLifetime
         Assert.Contains("curve_stats", names);
         Assert.Contains("protocol_help", names);
         Assert.Contains("send_history", names);
-        Assert.Equal(25, names.Count); // 13 旧 + 12 新
+        Assert.Equal(26, names.Count); // 13 旧 + 12 新 + send_file
     }
 }

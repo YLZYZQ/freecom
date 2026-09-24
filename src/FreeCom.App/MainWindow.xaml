@@ -259,6 +259,9 @@
                             <TextBlock Text="间隔(ms)" FontSize="11" Foreground="{DynamicResource TextSecondary}"
                                        VerticalAlignment="Center" Margin="10,0,6,0"/>
                             <TextBox x:Name="TbInterval" Width="58" Text="1000" FontFamily="Consolas, Courier New"/>
+                            <Button x:Name="BtnSendFile" Content="发送文件…" Style="{StaticResource LinkButton}"
+                                    Click="SendFile_OnClick" Margin="14,0,0,0" VerticalAlignment="Center"
+                                    ToolTip="选择文件按原始字节发送到串口（不经编码转换）"/>
                             <TextBlock x:Name="TbSendHint" Foreground="{DynamicResource WarnBrush}" FontSize="11"
                                        VerticalAlignment="Center" Margin="14,0,0,0"/>
                         </StackPanel>

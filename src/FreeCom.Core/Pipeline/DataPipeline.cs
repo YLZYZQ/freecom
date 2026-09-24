@@ -226,6 +226,55 @@ public sealed class DataPipeline : IDisposable
             await t.WriteAsync(bytes).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// 发送文件：按原始字节分块写入（不经过编码转换），计入计数与日志；
+    /// 审计记一条文件级记录（文件名+总大小+首 32B 十六进制）。
+    /// 大文件按块流式处理，不在内存中整体驻留；写失败时抛出（已发部分的计数/日志保留）。
+    /// </summary>
+    public async Task<long> SendFileAsync(string path, CancellationToken ct = default)
+    {
+        var info = new FileInfo(path);
+        if (!info.Exists) throw new FileNotFoundException("文件不存在: " + path, path);
+        const int chunkSize = 8192;
+        await using var fs = new FileStream(path, FileMode.Open, FileAccess.Read,
+            FileShare.Read, chunkSize, useAsync: true);
+        var buffer = new byte[chunkSize];
+        bool audited = false;
+        long sent = 0;
+        int n;
+        while ((n = await fs.ReadAsync(buffer.AsMemory(0, buffer.Length), ct).ConfigureAwait(false)) > 0)
+        {
+            var block = new byte[n];
+            Array.Copy(buffer, block, n); // 独立副本：Raw/Display 共享只读
+            if (!audited)
+            {
+                RecordSendFile(info.Name, info.Length, block.AsSpan(0, Math.Min(32, n)).ToArray());
+                audited = true;
+            }
+            Counters.AddTx(n);
+            Raw.AppendOwned(DataDirection.Tx, block);
+            Display.AppendOwned(DataDirection.Tx, block);
+
+            ITransport? t;
+            lock (_transportLock) t = _transport;
+            if (t is { State: TransportState.Open })
+                await t.WriteAsync(block).ConfigureAwait(false);
+            sent += n;
+        }
+        return sent;
+    }
+
+    private void RecordSendFile(string name, long total, byte[] head)
+    {
+        lock (_auditLock)
+        {
+            _sendAudits.Enqueue(new SendAudit(
+                _sendAudits.Count + 1, DateTime.UtcNow, total,
+                $"[文件] {name} ({total} B)", HexParse.ToHexSpaced(head)));
+            while (_sendAudits.Count > MaxAudits) _sendAudits.Dequeue();
+        }
+    }
+
     public void Dispose()
     {
         _channel.Writer.TryComplete();

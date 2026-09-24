@@ -75,11 +75,11 @@ call("notifications/initialized", notify=True)
 r = call("tools/list")
 tools = r["result"]["tools"] if r and "result" in r else []
 names = [t["name"] for t in tools]
-check("tools/list 25 工具", len(tools) == 25, f"实际 {len(tools)}")
+check("tools/list 26 工具", len(tools) == 26, f"实际 {len(tools)}")
 required = ["app_info","diag_connectivity","serial_list","serial_open","serial_close","serial_status",
             "device_send","receive_read","protocol_get","protocol_set","plot_windows","plot_data",
             "curve_export","receive_wait","send_expect","vcom_list","vcom_create","vcom_remove",
-            "simulator_start","simulator_stop","curve_stats","protocol_help","send_history","export_raw","export_display"]
+            "simulator_start","simulator_stop","curve_stats","protocol_help","send_history","export_raw","export_display","send_file"]
 missing = [n for n in required if n not in names]
 check("25 工具名齐全", not missing, ",".join(missing))
 

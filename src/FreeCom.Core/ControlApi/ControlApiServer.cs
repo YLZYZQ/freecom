@@ -33,6 +33,8 @@ public static class McpToolCatalog
         new("serial_status", "查询当前连接状态", "GET", "/v1/serial/status", """{"type":"object","properties":{},"required":[]}"""),
         new("device_send", "直发数据（不经 UI）。format=text|hex", "POST", "/v1/device/send",
             """{"type":"object","properties":{"data":{"type":"string"},"format":{"type":"string","enum":["text","hex"],"default":"text"}},"required":["data"]}"""),
+        new("send_file", "发送文件：按原始字节分块写入串口（不经编码转换），适合固件/图片等二进制下发", "POST", "/v1/device/send-file",
+            """{"type":"object","properties":{"path":{"type":"string","description":"文件完整路径"}},"required":["path"]}"""),
         new("receive_read", "读取接收缓冲（since 游标 + limit + format）", "GET", "/v1/device/receive",
             """{"type":"object","properties":{"since":{"type":"integer","default":0},"limit":{"type":"integer","default":100},"format":{"type":"string","enum":["text","hex"],"default":"text"}},"required":[]}"""),
         new("protocol_get", "读取当前绘图协议", "GET", "/v1/protocol", """{"type":"object","properties":{},"required":[]}"""),
@@ -222,6 +224,19 @@ public sealed class ControlApiServer : IAsyncDisposable, IDisposable
                 var newline = json.Value.TryGetProperty("newline", out var n) ? n.GetString() : null;
                 await _surface.SendAsync(new SendRequest(d.GetString()!, format ?? "text", encoding, newline));
                 return Ok(new { sent = true });
+            });
+        });
+
+        app.MapPost("/v1/device/send-file", async (HttpContext ctx) =>
+        {
+            var json = await ReadJsonAsync(ctx);
+            if (json is null) return Err("invalid_json", "请求体不是合法 JSON");
+            return await SafeAsync(async () =>
+            {
+                if (!json.Value.TryGetProperty("path", out var p) || p.ValueKind != JsonValueKind.String)
+                    return Err("invalid_param", "缺少字符串字段 path（文件完整路径）");
+                var sent = await _surface.SendFileAsync(p.GetString()!, ctx.RequestAborted);
+                return Ok(new { sentBytes = sent });
             });
         });
 
@@ -428,6 +443,7 @@ public sealed class ControlApiServer : IAsyncDisposable, IDisposable
         new EndpointDto("POST", "/v1/serial/close", "关闭端口"),
         new EndpointDto("GET", "/v1/serial/status", "连接状态"),
         new EndpointDto("POST", "/v1/device/send", "直发数据"),
+        new EndpointDto("POST", "/v1/device/send-file", "发送文件（原始字节流）"),
         new EndpointDto("GET", "/v1/device/receive", "读取接收缓冲"),
         new EndpointDto("GET", "/v1/protocol", "当前协议"),
         new EndpointDto("PUT", "/v1/protocol", "切换协议"),

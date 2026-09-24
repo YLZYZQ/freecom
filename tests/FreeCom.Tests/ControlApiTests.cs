@@ -213,8 +213,8 @@ public class ControlApiTests : IClassFixture<ApiFixture>
     {
         var json = await _fx.GetAsync("/v1/capabilities");
         var data = json.GetProperty("data");
-        Assert.Equal(27, data.GetProperty("endpoints").GetArrayLength());
-        Assert.Equal(25, data.GetProperty("tools").GetArrayLength());
+        Assert.Equal(28, data.GetProperty("endpoints").GetArrayLength());
+        Assert.Equal(26, data.GetProperty("tools").GetArrayLength());
         Assert.Equal(5, data.GetProperty("protocols").GetArrayLength());
         var transports = data.GetProperty("transports").EnumerateArray().Select(t => t.GetString()).ToList();
         Assert.Equal(["serial"], transports); // v0.1.1：唯一传输类型为串口（虚拟串口对亦走串口）

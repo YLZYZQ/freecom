@@ -113,7 +113,14 @@ public sealed class SerialTransport : ITransport
     public async Task WriteAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default)
     {
         var port = _port ?? throw new InvalidOperationException("串口未打开");
-        await port.BaseStream.WriteAsync(data, ct).ConfigureAwait(false);
+        // com0com 对端未打开时 BaseStream.WriteAsync 可能无限挂起（WriteTimeout 对挂起的
+        // 异步写不生效，实测会拖死请求线程）：等待加超时守卫，超时抛出由上层报告。
+        var write = port.BaseStream.WriteAsync(data, ct).AsTask();
+        var guard = Task.Delay(port.WriteTimeout + 2000, CancellationToken.None);
+        var done = await Task.WhenAny(write, guard).ConfigureAwait(false);
+        if (done != write)
+            throw new TimeoutException($"串口写超时（{port.WriteTimeout + 2000}ms，对端未消费或已断开）");
+        await write.ConfigureAwait(false);
         await port.BaseStream.FlushAsync(ct).ConfigureAwait(false);
     }
 
@@ -126,15 +133,24 @@ public sealed class SerialTransport : ITransport
         _port = null;
         if (port != null)
         {
-            try { if (port.IsOpen) port.Close(); } catch { /* 拔线等场景 */ }
-            try { port.Dispose(); } catch { } // 独立 try：即使 Close 抛异常也必须释放句柄
+            // com0com 上挂起的写会让 port.Close()/Dispose() 无限阻塞（守卫超时后写仍悬着）：
+            // 后台限时关闭，超时放弃句柄（驱动异常状态，句柄由进程退出回收），不让调用方挂死
+            var closer = Task.Run(() =>
+            {
+                try { if (port.IsOpen) port.Close(); } catch { /* 拔线等场景 */ }
+                try { port.Dispose(); } catch { }
+            });
+            if (!closer.Wait(1500))
+            {
+                State = TransportState.Error;
+            }
         }
         try { _readLoop?.Wait(1000); } catch { }
         _cts?.Dispose();
         _cts = null;
         _readLoop = null;
         _port = null;
-        State = TransportState.Closed;
+        if (State != TransportState.Error) State = TransportState.Closed;
         Description = "";
     }
 

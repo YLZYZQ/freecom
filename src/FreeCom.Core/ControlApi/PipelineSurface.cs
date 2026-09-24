@@ -116,6 +116,13 @@ public sealed class PipelineSurface : IControlSurface
             throw new ArgumentException($"format 必须为 text 或 hex，收到: {request.Format}");
     }
 
+    public async Task<long> SendFileAsync(string path, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException("必须提供 path（文件完整路径）");
+        return await Pipeline.SendFileAsync(path, ct).ConfigureAwait(false);
+    }
+
     public ReceivePageDto ReadReceive(long since, int limit, string format)
     {
         limit = Math.Clamp(limit == 0 ? 100 : limit, 1, 10_000);

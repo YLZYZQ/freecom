@@ -294,6 +294,48 @@ public partial class MainWindow : Window
         }
     }
 
+    // ---------------- 发送文件 ----------------
+
+    private bool _sendingFile;
+
+    private async void SendFile_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (_pipeline is not { IsTransportOpen: true })
+        {
+            TbSendHint.Text = "端口未打开";
+            return;
+        }
+        if (_sendingFile)
+        {
+            TbSendHint.Text = "正在发送文件，请稍候…";
+            return;
+        }
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "选择要发送的文件",
+            Filter = "所有文件|*.*",
+        };
+        if (dlg.ShowDialog(this) != true) return;
+        _sendingFile = true;
+        BtnSendFile.IsEnabled = false;
+        var name = System.IO.Path.GetFileName(dlg.FileName);
+        try
+        {
+            TbSendHint.Text = $"正在发送 {name}…";
+            long sent = await _pipeline.SendFileAsync(dlg.FileName);
+            TbSendHint.Text = $"已发送文件 {name}（{sent} B）";
+        }
+        catch (Exception ex)
+        {
+            TbSendHint.Text = $"发送失败（{ex.Message}）";
+        }
+        finally
+        {
+            _sendingFile = false;
+            BtnSendFile.IsEnabled = true;
+        }
+    }
+
     private const string HistoryPlaceholder = "发送历史";
 
     private void StartCyclicSend()

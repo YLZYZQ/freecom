@@ -80,6 +80,7 @@ public interface IControlSurface
     Task OpenTransportAsync(OpenTransportRequest request);
     Task CloseTransportAsync();
     Task SendAsync(SendRequest request);
+    Task<long> SendFileAsync(string path, CancellationToken ct);
     ReceivePageDto ReadReceive(long since, int limit, string format);
     ProtocolStateDto GetProtocol();
     Task SetProtocolAsync(string name, Dictionary<string, string>? options);

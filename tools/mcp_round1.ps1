@@ -37,8 +37,8 @@ Check '鉴权: 正确 token 200' ((StatusOf $r0b) -eq 200)
 # ---- 目录与信息 ----
 $r1 = Req GET '/v1/capabilities'
 $cap = (BodyOf $r1) | ConvertFrom-Json
-Check 'capabilities: 27 端点' ($cap.data.endpoints.Count -eq 27)
-Check 'capabilities: 25 工具' ($cap.data.tools.Count -eq 25)
+Check 'capabilities: 28 端点' ($cap.data.endpoints.Count -eq 28)
+Check 'capabilities: 26 工具' ($cap.data.tools.Count -eq 26)
 Check 'capabilities: 5 协议' ($cap.data.protocols.Count -eq 5)
 $r2 = Req GET '/v1/app/info'
 $info = JsonData $r2
@@ -95,6 +95,12 @@ $ex = JsonData $r10
 Check 'device/expect 结构完整 sentBytes>0' ($ex.sentBytes -gt 0 -and ($null -ne $ex.wait))
 $r11 = Req GET '/v1/device/receive?since=0&limit=50&format=text'
 Check 'device/receive 分页返回条目' ((JsonData $r11).items.Count -gt 0)
+# send-file（对端=模拟器不读，验证守卫与审计而非传输完成）
+$sfPath = Join-Path $env:TEMP 'r1-sendfile.bin'
+[System.IO.File]::WriteAllBytes($sfPath, (New-Object byte[] 100))
+$rSf = Req POST '/v1/device/send-file' (@{ path = $sfPath } | ConvertTo-Json) $true 12
+$sfStatus = StatusOf $rSf
+Check 'device/send-file 端点可达（200 或写超时守卫 500）' ($sfStatus -eq 200 -or $sfStatus -eq 500) ("status=" + $sfStatus)
 $r12 = Req GET '/v1/device/send-history?limit=10'
 $hist = JsonData $r12
 $histDetail = ($hist | ForEach-Object { $_.hex }) -join '|'
