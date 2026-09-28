@@ -46,6 +46,12 @@ export DOTNET_ROOT="C:\Users\admin\dotnet8"
 bash tests/tools/e2e_mvp.sh                                                      # E2E 13 项（真实串口路径）
 ```
 
+**安装包 / 免安装包**（GitHub Releases 提供）：
+- `FreeCom_v0.2.0_win64_Setup.exe`：安装版（Velopack，无需管理员：装至 %LOCALAPPDATA%\FreeCom，桌面/开始菜单快捷方式，自带卸载与后续自动更新通道）
+- `FreeCom_v0.2.0_win64_portable.zip`：免安装版（解压即用）
+
+本地重新打包：`dotnet publish src/FreeCom.App -c Release -r win-x64 --self-contained` → `vpk pack --packId FreeCom --packVersion 0.2.0 --packDir publish/FreeCom --mainExe FreeCom.App.exe --noPortable`（Velopack CLI：`dotnet tool install -g vpk`），免安装包直接压缩 publish 目录。
+
 桌面程序（独立版，双击即用）：`串口上位机\启动FreeCom.cmd` 或 `freecom\publish\FreeCom\FreeCom.App.exe`。
 
 无头宿主（真实串口双端扮演，供脚本/CI 验证）：

@@ -16,3 +16,7 @@ tools/com0com/extracted/
 .idea/
 *.user
 *.suo
+
+# 发布产物（安装包/免安装包不随仓库分发，GitHub Releases 承载）
+dist/
+Releases/
