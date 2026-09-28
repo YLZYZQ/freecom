@@ -47,10 +47,10 @@ bash tests/tools/e2e_mvp.sh                                                     
 ```
 
 **安装包 / 免安装包**（GitHub Releases 提供）：
-- `FreeCom_v0.2.0_win64_Setup.exe`：安装版（Velopack，无需管理员：装至 %LOCALAPPDATA%\FreeComApp，桌面/开始菜单快捷方式，自带卸载与后续自动更新通道；卸载后安装目录零残留，用户配置 %LOCALAPPDATA%\FreeCom\settings.json 保留）
+- `FreeCom_v0.2.0_win64_Setup.exe`：安装版（Inno Setup 传统向导：可选安装位置/桌面与开始菜单快捷方式、MIT 许可页、控制面板可卸载；默认 Program Files（UAC），也可 `/CURRENTUSER` 装用户目录免管理员；卸载零残留，用户配置 %LOCALAPPDATA%\FreeCom\settings.json 保留）
 - `FreeCom_v0.2.0_win64_portable.zip`：免安装版（解压即用）
 
-本地重新打包：`dotnet publish src/FreeCom.App -c Release -r win-x64 --self-contained` → `vpk pack --packId FreeComApp --packVersion 0.2.0 --packDir publish/FreeCom --mainExe FreeCom.App.exe --noPortable`（Velopack CLI：`dotnet tool install -g vpk`），免安装包直接压缩 publish 目录。
+本地重新打包：`dotnet publish src/FreeCom.App -c Release -r win-x64 --self-contained` → `ISCC installer\FreeCom.iss`（Inno Setup 6，脚本与中文语言文件在 installer/ 目录），免安装包直接压缩 publish 目录。静默安装 `Setup.exe /VERYSILENT [/DIR=路径]`，静默卸载 `unins000.exe /VERYSILENT`。
 
 桌面程序（独立版，双击即用）：`串口上位机\启动FreeCom.cmd` 或 `freecom\publish\FreeCom\FreeCom.App.exe`。
 

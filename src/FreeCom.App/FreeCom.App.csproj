@@ -17,7 +17,6 @@
 
   <ItemGroup>
     <PackageReference Include="ScottPlot.WPF" Version="5.0.47" />
-    <PackageReference Include="Velopack" Version="1.2.158" />
     <ProjectReference Include="..\FreeCom.Core\FreeCom.Core.csproj" />
   </ItemGroup>
 

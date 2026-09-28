@@ -5,12 +5,6 @@ namespace FreeCom.App;
 
 public partial class App : Application
 {
-    public App()
-    {
-        // Velopack 安装器/更新器钩子：普通直接运行时为无操作，仅在 vpk 安装包首次安装或更新时生效
-        Velopack.VelopackApp.Build().Run();
-    }
-
     public static readonly string LogFile = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "FreeCom", "freecom.log");
