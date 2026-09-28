@@ -62,6 +62,7 @@
                 <MenuItem Header="帮助(_H)">
                     <MenuItem Header="检查更新..." Click="CheckUpdate_OnClick"/>
                     <MenuItem Header="协议格式说明" Click="ProtocolHelp_OnClick"/>
+                    <MenuItem Header="MCP AI 自动化说明..." Click="McpHelp_OnClick"/>
                     <MenuItem Header="关于 FreeCom" Click="About_OnClick"/>
                 </MenuItem>
             </Menu>

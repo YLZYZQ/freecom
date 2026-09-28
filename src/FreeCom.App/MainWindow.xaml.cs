@@ -1081,6 +1081,15 @@ public partial class MainWindow : Window
         _helpWindow.Show();
     }
 
+    private McpHelpWindow? _mcpHelpWindow;
+
+    private void McpHelp_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (_mcpHelpWindow is { IsLoaded: true }) { _mcpHelpWindow.Activate(); return; }
+        _mcpHelpWindow = new McpHelpWindow { Owner = this };
+        _mcpHelpWindow.Show();
+    }
+
     /// <summary>侧栏"数据导出"下拉菜单。</summary>
     private void ExportMenu_OnClick(object sender, RoutedEventArgs e)
     {

@@ -66,7 +66,7 @@ bash tests/tools/e2e_mvp.sh                                                     
 
 1. FreeCom → 工具 → 勾选 **启用 MCP 服务**，查看 Token；
 2. 客户端配置 `freecom-mcp.exe`（同目录），环境变量 `FREECOM_URL=http://127.0.0.1:17340`、`FREECOM_TOKEN=<Token>`；
-3. 工具（26 个）：`diag_connectivity` `serial_list` `serial_open/close/status` `device_send` `send_file` `receive_read` `receive_wait` `send_expect` `send_history` `protocol_get/set` `protocol_help` `plot_windows` `plot_data` `curve_stats` `curve_export` `export_raw` `export_display` `simulator_start/stop` `vcom_list/create/remove` `app_info`。仅监听 127.0.0.1，无遥测。
+3. 工具（26 个，软件内 帮助 → MCP AI 自动化说明 有完整使用指引）：`diag_connectivity` `serial_list` `serial_open/close/status` `device_send` `send_file` `receive_read` `receive_wait` `send_expect` `send_history` `protocol_get/set` `protocol_help` `plot_windows` `plot_data` `curve_stats` `curve_export` `export_raw` `export_display` `simulator_start/stop` `vcom_list/create/remove` `app_info`。仅监听 127.0.0.1，无遥测。
 
 ## 目录结构
 
