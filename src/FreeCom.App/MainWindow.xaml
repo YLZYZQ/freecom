@@ -60,6 +60,7 @@
                     <MenuItem Header="设备模拟器..." Click="DeviceSimulator_OnClick"/>
                 </MenuItem>
                 <MenuItem Header="帮助(_H)">
+                    <MenuItem Header="检查更新..." Click="CheckUpdate_OnClick"/>
                     <MenuItem Header="协议格式说明" Click="ProtocolHelp_OnClick"/>
                     <MenuItem Header="关于 FreeCom" Click="About_OnClick"/>
                 </MenuItem>
@@ -329,6 +330,12 @@
         <Border Grid.Row="2" Background="{DynamicResource StatusBrush}"
                 BorderBrush="{DynamicResource SeparatorBrush}" BorderThickness="0,1,0,0" Padding="16,5">
             <DockPanel>
+                <Border x:Name="BdUpdate" DockPanel.Dock="Right" HorizontalAlignment="Right" CornerRadius="8"
+                        Background="{DynamicResource AccentBrush}" Padding="8,1" VerticalAlignment="Center"
+                        Margin="0,0,8,0" Visibility="Collapsed" Cursor="Hand"
+                        MouseLeftButtonUp="UpdateBadge_OnClick" ToolTip="发现新版本，点击前往 GitHub 下载">
+                    <TextBlock x:Name="TbUpdate" Text="🆕 新版本" FontSize="9.5" Foreground="White"/>
+                </Border>
                 <Border DockPanel.Dock="Right" HorizontalAlignment="Right" CornerRadius="8"
                         BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" Padding="8,1"
                         VerticalAlignment="Center">

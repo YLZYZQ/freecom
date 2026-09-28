@@ -70,6 +70,11 @@ public partial class MainWindow : Window
         Theme.Apply(_settings.Theme);
         UpdateThemePill();
 
+        // 启动 5 秒后静默检查一次 GitHub 新版本（不阻塞启动；失败无感，不打扰）
+        var updateTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+        updateTimer.Tick += (_, _) => { updateTimer.Stop(); _ = RunUpdateCheckAsync(manual: false); };
+        updateTimer.Start();
+
         foreach (var name in ProtocolRegistry.Names)
             CbProtocol.Items.Add(name);
         CbProtocol.SelectedItem = ProtocolRegistry.Exists(_settings.ProtocolName) ? _settings.ProtocolName : "TEXT";
@@ -919,6 +924,64 @@ public partial class MainWindow : Window
     }
 
     // ---------------- MCP / Control API ----------------
+
+    // ---------------- 更新提醒（GitHub Releases） ----------------
+
+    private string? _updateUrl;
+
+    private void CheckUpdate_OnClick(object sender, RoutedEventArgs e) => _ = RunUpdateCheckAsync(manual: true);
+
+    private void UpdateBadge_OnClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (_updateUrl is null) return;
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(_updateUrl) { UseShellExecute = true });
+        }
+        catch { /* 无默认浏览器等场景：静默，用户可从帮助菜单重试 */ }
+    }
+
+    /// <summary>检查 GitHub 最新 Release：发现新版则在状态栏亮提示条；manual=true 额外弹窗反馈结果。</summary>
+    private async Task RunUpdateCheckAsync(bool manual)
+    {
+        var current = new Version(FreeCom.Core.ControlApi.PipelineSurface.AppVersion);
+        FreeCom.Core.Services.ReleaseInfo? release = null;
+        string? error = null;
+        try
+        {
+            using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            http.DefaultRequestHeaders.UserAgent.ParseAdd($"FreeCom/{current}");
+            release = await FreeCom.Core.Services.UpdateChecker.FetchLatestAsync(http);
+        }
+        catch (Exception ex) { error = ex.Message; }
+
+        await Dispatcher.InvokeAsync(() =>
+        {
+            if (FreeCom.Core.Services.UpdateChecker.IsNewer(current, release?.Version))
+            {
+                _updateUrl = release!.HtmlUrl;
+                TbUpdate.Text = $"🆕 新版本 v{release.Version}";
+                BdUpdate.Visibility = Visibility.Visible;
+                if (manual)
+                    MessageBox.Show(this,
+                        $"发现新版本 v{release.Version}（当前 v{current}）。\n\n点击状态栏右侧「🆕 新版本」即可前往 GitHub 下载。",
+                        "FreeCom 更新提醒", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else if (manual)
+            {
+                if (error is not null)
+                    MessageBox.Show(this,
+                        $"暂时无法获取版本信息（{error}）。\n请检查网络后稍后再试，或直接访问 GitHub Releases 页面。",
+                        "FreeCom 更新提醒", MessageBoxButton.OK, MessageBoxImage.Warning);
+                else if (release is null)
+                    MessageBox.Show(this, $"GitHub 上尚未发布任何版本，当前 v{current}。",
+                        "FreeCom 更新提醒", MessageBoxButton.OK, MessageBoxImage.Information);
+                else
+                    MessageBox.Show(this, $"当前已是最新版本（v{current}）。",
+                        "FreeCom 更新提醒", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        });
+    }
 
     private async void McpToggle_OnClick(object sender, RoutedEventArgs e)
     {
