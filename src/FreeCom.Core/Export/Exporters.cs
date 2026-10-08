@@ -58,14 +58,19 @@ public static class Exporters
                 // entry, but flush incomplete sequences at the original entry boundary.
                 decoder!.Reset();
                 bool completed;
+                char lastChar = '\0';
                 do
                 {
                     decoder.Convert(bytes, chars, flush: true, out int used, out int written, out completed);
                     writer.Write(chars[..written]);
+                    if (written > 0) lastChar = chars[written - 1];
                     bytes = bytes[used..];
                 } while (!completed);
+                if (lastChar != '\n')
+                    writer.Write('\n'); // 数据自带尾换行则吸收为条目分隔；换行统一 \n（与 RenderText 一致）
+                continue;
             }
-            writer.WriteLine();
+            writer.Write('\n');
         }
     }
 

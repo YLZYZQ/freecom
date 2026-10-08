@@ -66,3 +66,30 @@ public class FrameAssemblerTests
         Assert.Equal(2, frames.Count); // 直通模式：一片一条（旧行为）
     }
 }
+
+/// <summary>空行修复：条目自带尾换行吸收为条目分隔（RenderText/导出不产生空行）。</summary>
+public class EntryNewlineTests
+{
+    [Fact]
+    public void CrlfTail_Absorbed()
+    {
+        Assert.Equal("abc\n", FreeCom.Core.Pipeline.DisplaySink.WithEntryNewline("abc\r\n"));
+        Assert.Equal("abc\n", FreeCom.Core.Pipeline.DisplaySink.WithEntryNewline("abc\n"));
+    }
+
+    [Fact]
+    public void NoTail_GetsNewline()
+    {
+        Assert.Equal("abc\n", FreeCom.Core.Pipeline.DisplaySink.WithEntryNewline("abc"));
+    }
+
+    [Fact]
+    public void RenderText_NoBlankLinesBetweenEntries()
+    {
+        var sink = new FreeCom.Core.Pipeline.DisplaySink();
+        sink.Append(FreeCom.Core.Pipeline.DataDirection.Rx, System.Text.Encoding.ASCII.GetBytes("DISTANCE:43\r\n"));
+        sink.Append(FreeCom.Core.Pipeline.DataDirection.Rx, System.Text.Encoding.ASCII.GetBytes("DISTANCE:44\r\n"));
+        var text = sink.RenderText(includeTimestamp: false);
+        Assert.Equal("<< DISTANCE:43\n<< DISTANCE:44\n", text);
+    }
+}

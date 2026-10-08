@@ -82,6 +82,15 @@ public sealed class DisplaySink
         }
     }
 
+    /// <summary>条目文本：吸收数据自带的尾部换行为条目分隔（组帧后每帧多含行尾 CR/LF，
+    /// 与条目分隔换行叠加会产生大量空行）；数据无尾换行则补一个保证条目换行。</summary>
+    public static string WithEntryNewline(string s)
+    {
+        if (s.EndsWith("\r\n", StringComparison.Ordinal)) return s[..^2] + "\n";
+        if (s.EndsWith("\n", StringComparison.Ordinal)) return s;
+        return s + "\n";
+    }
+
     public string RenderText(bool includeTimestamp = true, long sinceSeq = 0, int limit = int.MaxValue)
     {
         var sb = new StringBuilder();
@@ -90,7 +99,7 @@ public sealed class DisplaySink
             if (includeTimestamp)
                 sb.Append('[').Append(e.TimeUtc.ToLocalTime().ToString("HH:mm:ss.fff")).Append("] ");
             sb.Append(e.Dir == DataDirection.Tx ? ">> " : "<< ");
-            sb.AppendLine(Encoding.UTF8.GetString(e.Data.Span));
+            sb.Append(WithEntryNewline(Encoding.UTF8.GetString(e.Data.Span)));
         }
         return sb.ToString();
     }
@@ -103,7 +112,7 @@ public sealed class DisplaySink
             if (includeTimestamp)
                 sb.Append('[').Append(e.TimeUtc.ToLocalTime().ToString("HH:mm:ss.fff")).Append("] ");
             sb.Append(e.Dir == DataDirection.Tx ? ">> " : "<< ");
-            sb.AppendLine(HexParse.ToHexSpaced(e.Data.Span));
+            sb.Append(HexParse.ToHexSpaced(e.Data.Span)).Append('\n');
         }
         return sb.ToString();
     }

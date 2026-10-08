@@ -486,8 +486,16 @@ public partial class MainWindow : Window
                 AppendBounded(e.Dir == DataDirection.Tx ? ">> " : "<< ");
                 if (e.Data.Length > MaxEntryBytes) AppendBounded("[大数据块仅显示末尾] ");
                 var tail = e.Data.Span[Math.Max(0, e.Data.Length - MaxEntryBytes)..];
-                AppendBounded(hex ? HexParse.ToHexSpaced(tail) : Encoding.UTF8.GetString(tail));
-                AppendBounded("\n");
+                if (hex)
+                {
+                    AppendBounded(HexParse.ToHexSpaced(tail));
+                    AppendBounded("\n");
+                }
+                else
+                {
+                    // 组帧后每帧多含行尾换行：吸收为条目分隔，避免每个数据行后多一空行
+                    AppendBounded(FreeCom.Core.Pipeline.DisplaySink.WithEntryNewline(Encoding.UTF8.GetString(tail)));
+                }
                 if (++pendingCount >= 80) FlushPending();
             }
             FlushPending();
