@@ -280,11 +280,12 @@ public class ControlApiTests : IClassFixture<ApiFixture>
     public async Task DeviceSend_TextLoopback_VisibleInReceive()
     {
         await _fx.OpenDefaultsAsync();
+        Thread.Sleep(60); // 等组帧静默：前序测试留在缓冲的分片先成帧，避免与本测试回显合并
         var (status, _) = await _fx.SendAsync(HttpMethod.Post, "/v1/device/send",
             """{"data":"{loop}1,2\n","format":"text"}""");
         Assert.Equal(HttpStatusCode.OK, status);
 
-        await _fx.WaitFramesAsync(1);
+        await _fx.WaitFramesAsync(_fx.Pipeline.Counters.FramesParsed + 1); // 相对基线：echo 需等组帧静默成帧
         var receive = await _fx.GetAsync("/v1/device/receive?since=0&limit=100&format=text");
         var items = receive.GetProperty("data").GetProperty("items");
         Assert.Contains(items.EnumerateArray(), i => (i.GetProperty("data").GetString() ?? "").Contains("{loop}1,2"));
@@ -294,11 +295,12 @@ public class ControlApiTests : IClassFixture<ApiFixture>
     public async Task DeviceSend_HexFormat()
     {
         await _fx.OpenDefaultsAsync();
+        Thread.Sleep(60); // 等组帧静默：避免与前序测试缓冲分片合并
         var (status, _) = await _fx.SendAsync(HttpMethod.Post, "/v1/device/send",
             """{"data":"AA 55 01","format":"hex"}""");
         Assert.Equal(HttpStatusCode.OK, status);
 
-        await Wait.RxAsync(_fx.Pipeline, 3);
+        await Wait.RxAsync(_fx.Pipeline, _fx.Pipeline.Counters.RxBytes + 3); // 相对基线：echo 需等组帧静默成帧
         var receive = await _fx.GetAsync("/v1/device/receive?since=0&limit=100&format=hex");
         var items = receive.GetProperty("data").GetProperty("items").EnumerateArray().ToList();
         Assert.Contains(items, i => (i.GetProperty("data").GetString() ?? "").Replace(" ", "").Contains("AA5501"));
@@ -324,10 +326,13 @@ public class ControlApiTests : IClassFixture<ApiFixture>
     public async Task Receive_Paging_WithSince()
     {
         await _fx.OpenDefaultsAsync();
+        Thread.Sleep(60); // 等组帧静默：前序测试缓冲残留先成帧，避免吞掉本测试首行
         long baseline = _fx.Pipeline.Raw.LastSeq;
         long target = _fx.Pipeline.Counters.FramesParsed + 3; // 注入前定基线，避免竞态
         _fx.InjectText("{page}1\n");
+        Thread.Sleep(50); // 行间隔>组帧静默间隔：每行独立成帧（分页按行断言）
         _fx.InjectText("{page}2\n");
+        Thread.Sleep(50);
         _fx.InjectText("{page}3\n");
         await _fx.WaitFramesAsync(target);
         var p1 = await _fx.GetAsync($"/v1/device/receive?since={baseline}&limit=2&format=text");
@@ -429,7 +434,7 @@ public class ControlApiTests : IClassFixture<ApiFixture>
         _fx.InjectText("{info}1\n");
         await _fx.WaitFramesAsync(_fx.Pipeline.Counters.FramesParsed + 1);
         var info = (await _fx.GetAsync("/v1/app/info")).GetProperty("data");
-        Assert.Equal("0.2.2", info.GetProperty("version").GetString());
+        Assert.Equal("0.2.3", info.GetProperty("version").GetString());
         Assert.True(info.GetProperty("rxBytes").GetInt64() > 0);
         Assert.True(info.GetProperty("windowCount").GetInt32() >= 1);
     }

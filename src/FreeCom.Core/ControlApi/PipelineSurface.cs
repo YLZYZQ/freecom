@@ -9,7 +9,7 @@ namespace FreeCom.Core.ControlApi;
 /// <summary>基于 DataPipeline 的标准 Control Surface：App 与无头宿主共用。</summary>
 public sealed class PipelineSurface : IControlSurface
 {
-    public const string AppVersion = "0.2.2";
+    public const string AppVersion = "0.2.3";
 
     private readonly object _transportLock = new();
     private ITransport? _transport;

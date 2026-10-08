@@ -139,7 +139,7 @@ public sealed class McpToolsTests : IClassFixture<ApiFixture>, IAsyncLifetime
         // 前序测试（Expect/Wait 的无换行回显）可能在 LineAssembler 里残留半行，
         // 会与本测试第一行拼接成非法帧；先注入一个裸换行冲掉残留
         _fx.InjectText("\n");
-        for (int i = 1; i <= 10; i++) _fx.InjectText($"{{stats}}{i * 2}\n");
+        for (int i = 1; i <= 10; i++) { _fx.InjectText($"{{stats}}{i * 2}\n"); Thread.Sleep(45); }
 
         var windows = await _fx.GetDataAsync("/v1/plot/windows");
         var win = windows.EnumerateArray().Single(w => w.GetProperty("title").GetString() == "stats");

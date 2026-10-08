@@ -5,7 +5,7 @@
 
 #define MyAppName "FreeCom 免费串口调试助手"
 #define MyAppNameEn "FreeCom"
-#define MyAppVersion "0.2.2"
+#define MyAppVersion "0.2.3"
 #define MyAppPublisher "YLZYZQ"
 #define MyAppExeName "FreeCom.App.exe"
 #define MyAppAssocName MyAppName + " 配置文件"

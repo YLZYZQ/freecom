@@ -11,6 +11,8 @@ public sealed class PipelineOptions
     public int DisplayCapacity { get; set; } = 20_000;
     public int RawLogCapacity { get; set; } = 50_000;
     public int MaxPointsPerCurve { get; set; } = 500_000;
+    /// <summary>接收组帧静默间隔（ms）：分片间隔小于该值拼为同一帧；&lt;=0 直通不组帧。</summary>
+    public int FrameGapMs { get; set; } = 30;
 }
 
 /// <summary>
@@ -29,6 +31,8 @@ public sealed class DataPipeline : IDisposable
 
     private IProtocolParser _parser;
     private ITransport? _transport;
+    private FrameAssembler? _rxAssembler;
+    private readonly int _frameGapMs;
 
     public Counters Counters { get; } = new();
     public DisplaySink Display { get; }
@@ -76,6 +80,7 @@ public sealed class DataPipeline : IDisposable
         Display = new DisplaySink(options.DisplayCapacity);
         Raw = new RawLog(options.RawLogCapacity);
         Plots = new PlotService { MaxPointsPerCurve = options.MaxPointsPerCurve };
+        _frameGapMs = options.FrameGapMs;
         _channel = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(4096)
         {
             SingleReader = true,
@@ -107,8 +112,9 @@ public sealed class DataPipeline : IDisposable
         lock (_transportLock)
         {
             DetachTransportLocked();
+            _rxAssembler = new FrameAssembler(_frameGapMs, OnTransportData);
             _transport = transport;
-            _transport.DataReceived += OnTransportData;
+            _transport.DataReceived += OnAssembledTransportData;
         }
     }
 
@@ -120,9 +126,16 @@ public sealed class DataPipeline : IDisposable
     private void DetachTransportLocked()
     {
         if (_transport == null) return;
-        _transport.DataReceived -= OnTransportData;
+        _transport.DataReceived -= OnAssembledTransportData;
         _transport = null;
+        // 冲刷组帧缓冲中的尾帧（连接关闭时未满静默间隔的数据不能丢）
+        _rxAssembler?.Dispose();
+        _rxAssembler = null;
     }
+
+    /// <summary>transport 分片 → 组帧器；成帧后走 OnTransportData。</summary>
+    private void OnAssembledTransportData(ReadOnlyMemory<byte> data)
+        => _rxAssembler?.Feed(data.ToArray());
 
     public TransportState TransportState
     {
@@ -139,9 +152,8 @@ public sealed class DataPipeline : IDisposable
         get { lock (_transportLock) return _transport is { State: TransportState.Open }; }
     }
 
-    private void OnTransportData(ReadOnlyMemory<byte> data)
+    private void OnTransportData(byte[] arr)
     {
-        var arr = data.ToArray();
         Raw.AppendOwned(DataDirection.Rx, arr);
         Counters.AddRx(arr.Length);
         Display.AppendOwned(DataDirection.Rx, arr);
