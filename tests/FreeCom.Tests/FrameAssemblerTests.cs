@@ -93,3 +93,34 @@ public class EntryNewlineTests
         Assert.Equal("<< DISTANCE:43\n<< DISTANCE:44\n", text);
     }
 }
+
+/// <summary>偶发空行场景：行尾换行独立成帧（设备行数据与 \r\n 间隔超组帧间隔）、帧头换行。</summary>
+public class BlankEntryTests
+{
+    [Fact]
+    public void StandaloneNewlineFrame_Skipped()
+    {
+        var sink = new FreeCom.Core.Pipeline.DisplaySink();
+        sink.Append(FreeCom.Core.Pipeline.DataDirection.Rx, System.Text.Encoding.ASCII.GetBytes("DISTANCE:43\r\n"));
+        sink.Append(FreeCom.Core.Pipeline.DataDirection.Rx, System.Text.Encoding.ASCII.GetBytes("\r\n")); // 行尾独立成帧
+        sink.Append(FreeCom.Core.Pipeline.DataDirection.Rx, System.Text.Encoding.ASCII.GetBytes("DISTANCE:44\r\n"));
+        Assert.Equal("<< DISTANCE:43\n<< DISTANCE:44\n", sink.RenderText(includeTimestamp: false));
+    }
+
+    [Fact]
+    public void LeadingNewlineFrame_Stripped()
+    {
+        var sink = new FreeCom.Core.Pipeline.DisplaySink();
+        sink.Append(FreeCom.Core.Pipeline.DataDirection.Rx, System.Text.Encoding.ASCII.GetBytes("DISTANCE:43"));   // 无行尾（切在行尾前）
+        sink.Append(FreeCom.Core.Pipeline.DataDirection.Rx, System.Text.Encoding.ASCII.GetBytes("\r\nDISTANCE:44\r\n")); // 帧头带换行
+        Assert.Equal("<< DISTANCE:43\n<< DISTANCE:44\n", sink.RenderText(includeTimestamp: false));
+    }
+
+    [Fact]
+    public void BlankOnlyEntry_ReturnsEmpty()
+    {
+        Assert.Equal("", FreeCom.Core.Pipeline.DisplaySink.NormalizeEntryText("\r\n"));
+        Assert.Equal("", FreeCom.Core.Pipeline.DisplaySink.NormalizeEntryText("\n"));
+        Assert.Equal("", FreeCom.Core.Pipeline.DisplaySink.NormalizeEntryText(""));
+    }
+}

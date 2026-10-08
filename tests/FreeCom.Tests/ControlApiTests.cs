@@ -434,7 +434,7 @@ public class ControlApiTests : IClassFixture<ApiFixture>
         _fx.InjectText("{info}1\n");
         await _fx.WaitFramesAsync(_fx.Pipeline.Counters.FramesParsed + 1);
         var info = (await _fx.GetAsync("/v1/app/info")).GetProperty("data");
-        Assert.Equal("0.2.4", info.GetProperty("version").GetString());
+        Assert.Equal("0.2.5", info.GetProperty("version").GetString());
         Assert.True(info.GetProperty("rxBytes").GetInt64() > 0);
         Assert.True(info.GetProperty("windowCount").GetInt32() >= 1);
     }

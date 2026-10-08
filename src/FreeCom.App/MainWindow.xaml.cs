@@ -493,8 +493,11 @@ public partial class MainWindow : Window
                 }
                 else
                 {
-                    // 组帧后每帧多含行尾换行：吸收为条目分隔，避免每个数据行后多一空行
-                    AppendBounded(FreeCom.Core.Pipeline.DisplaySink.WithEntryNewline(Encoding.UTF8.GetString(tail)));
+                    // 组帧后的规范化：剥帧头换行/吸收尾换行（避免每行后空行）；
+                    // 纯空白条目（行尾换行独立成帧，设备行数据与行尾间隔超组帧间隔）整条跳过
+                    var text = FreeCom.Core.Pipeline.DisplaySink.NormalizeEntryText(Encoding.UTF8.GetString(tail));
+                    if (text.Length == 0) { continue; }
+                    AppendBounded(text);
                 }
                 if (++pendingCount >= 80) FlushPending();
             }

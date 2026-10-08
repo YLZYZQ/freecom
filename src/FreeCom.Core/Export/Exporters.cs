@@ -25,6 +25,33 @@ public static class Exporters
         var decoder = hex ? null : Encoding.UTF8.GetDecoder();
         foreach (var entry in entries)
         {
+            var bytes = entry.Data.Span;
+            string text;
+            if (hex)
+            {
+                const string digits = "0123456789ABCDEF";
+                var sbHex = new StringBuilder(bytes.Length * 3);
+                foreach (byte value in bytes)
+                    sbHex.Append(digits[value >> 4]).Append(digits[value & 15]).Append(' ');
+                if (sbHex.Length > 0) sbHex.Length--; // 去尾空格
+                text = sbHex.ToString() + "\n";
+            }
+            else
+            {
+                // 条目级解码（组帧后条目为行级小数据）：规范化——剥帧头换行/吸收尾换行/
+                // 纯空白条目（行尾独立成帧）整条跳过（含前缀，避免导出空行）
+                decoder!.Reset();
+                var sb = new StringBuilder(bytes.Length);
+                bool completed;
+                do
+                {
+                    decoder.Convert(bytes, chars, flush: true, out int used, out int written, out completed);
+                    sb.Append(chars[..written]);
+                    bytes = bytes[used..];
+                } while (!completed);
+                text = DisplaySink.NormalizeEntryText(sb.ToString());
+                if (text.Length == 0) continue;
+            }
             if (includeTimestamp)
             {
                 writer.Write('[');
@@ -32,45 +59,7 @@ public static class Exporters
                 writer.Write("] ");
             }
             writer.Write(entry.Dir == DataDirection.Tx ? ">> " : "<< ");
-            var bytes = entry.Data.Span;
-            if (hex)
-            {
-                const string digits = "0123456789ABCDEF";
-                bool first = true;
-                while (!bytes.IsEmpty)
-                {
-                    int take = Math.Min(bytes.Length, chars.Length / 3);
-                    int written = 0;
-                    foreach (byte value in bytes[..take])
-                    {
-                        if (!first) chars[written++] = ' ';
-                        chars[written++] = digits[value >> 4];
-                        chars[written++] = digits[value & 15];
-                        first = false;
-                    }
-                    writer.Write(chars[..written]);
-                    bytes = bytes[take..];
-                }
-            }
-            else
-            {
-                // Match GetString per entry: preserve UTF-8 sequences inside a large
-                // entry, but flush incomplete sequences at the original entry boundary.
-                decoder!.Reset();
-                bool completed;
-                char lastChar = '\0';
-                do
-                {
-                    decoder.Convert(bytes, chars, flush: true, out int used, out int written, out completed);
-                    writer.Write(chars[..written]);
-                    if (written > 0) lastChar = chars[written - 1];
-                    bytes = bytes[used..];
-                } while (!completed);
-                if (lastChar != '\n')
-                    writer.Write('\n'); // 数据自带尾换行则吸收为条目分隔；换行统一 \n（与 RenderText 一致）
-                continue;
-            }
-            writer.Write('\n');
+            writer.Write(text);
         }
     }
 

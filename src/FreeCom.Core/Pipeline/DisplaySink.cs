@@ -82,24 +82,33 @@ public sealed class DisplaySink
         }
     }
 
-    /// <summary>条目文本：吸收数据自带的尾部换行为条目分隔（组帧后每帧多含行尾 CR/LF，
-    /// 与条目分隔换行叠加会产生大量空行）；数据无尾换行则补一个保证条目换行。</summary>
-    public static string WithEntryNewline(string s)
+    /// <summary>条目文本规范化：①剥掉帧头换行（分片边界切在行尾之后时，帧以 CR/LF 开头，
+    /// 会让 "<< " 前缀后紧跟空行）；②吸收数据自带的尾部换行为条目分隔（组帧后每帧多含
+    /// 行尾 CR/LF，与条目分隔换行叠加会产生空行）；③纯空白条目（行尾换行独立成帧，
+    /// 设备行数据与行尾间隔超过组帧间隔时出现）返回空串，调用方跳过渲染。</summary>
+    public static string NormalizeEntryText(string s)
     {
+        s = s.TrimStart('\r', '\n');
+        if (s.Length == 0) return "";
         if (s.EndsWith("\r\n", StringComparison.Ordinal)) return s[..^2] + "\n";
         if (s.EndsWith("\n", StringComparison.Ordinal)) return s;
         return s + "\n";
     }
+
+    /// <summary>兼容旧名（仅吸收尾换行）。</summary>
+    public static string WithEntryNewline(string s) => NormalizeEntryText(s);
 
     public string RenderText(bool includeTimestamp = true, long sinceSeq = 0, int limit = int.MaxValue)
     {
         var sb = new StringBuilder();
         foreach (var e in Snapshot(sinceSeq, limit))
         {
+            var text = NormalizeEntryText(Encoding.UTF8.GetString(e.Data.Span));
+            if (text.Length == 0) continue; // 纯空白条目（行尾独立成帧）：不渲染
             if (includeTimestamp)
                 sb.Append('[').Append(e.TimeUtc.ToLocalTime().ToString("HH:mm:ss.fff")).Append("] ");
             sb.Append(e.Dir == DataDirection.Tx ? ">> " : "<< ");
-            sb.Append(WithEntryNewline(Encoding.UTF8.GetString(e.Data.Span)));
+            sb.Append(text);
         }
         return sb.ToString();
     }
